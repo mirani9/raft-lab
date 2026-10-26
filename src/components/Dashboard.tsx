@@ -130,7 +130,7 @@ export function Dashboard() {
         let speed = simSpeedRef.current;
         let partitions = networkPartitionsRef.current;
 
-        let activeLeaderId = NODE_IDS.find(id => next[id].state === 'Leader' && next[id].state !== 'Dead' && next[id].state !== 'Partitioned');
+        let activeLeaderId = NODE_IDS.find(id => next[id].state === 'Leader');
 
         NODE_IDS.forEach(id => {
           let node = next[id];
@@ -277,7 +277,7 @@ export function Dashboard() {
   }, []);
 
   const handleClientWrite = (key: string, value: string) => {
-    const leaderId = NODE_IDS.find(id => nodes[id].state === 'Leader' && nodes[id].state !== 'Dead' && nodes[id].state !== 'Partitioned');
+    const leaderId = NODE_IDS.find(id => nodes[id].state === 'Leader');
     if (!leaderId) {
       addEvent(`❌ Write rejected: No active leader found in cluster!`, 'error');
       setWriteStatus('Rejected: No active leader');
@@ -402,7 +402,7 @@ export function Dashboard() {
       addEvent(`⚡ Split-Brain preset applied (A,B minority vs C,D,E majority)`, 'warn');
       setLabActions(a => ({ ...a, partitionCreated: true }));
     } else if (preset === 'kill-leader') {
-      const leaderId = NODE_IDS.find(id => nodes[id].state === 'Leader' && nodes[id].state !== 'Dead' && nodes[id].state !== 'Partitioned');
+      const leaderId = NODE_IDS.find(id => nodes[id].state === 'Leader');
       if (leaderId) killNode(leaderId);
       else addEvent(`No active leader to kill`, 'error');
     } else if (preset === 'heal') {
@@ -433,7 +433,7 @@ export function Dashboard() {
     }
   }, [nodes, networkPartitions, telemetry, labActions, activeLabId]);
 
-  const activeLeader = NODE_IDS.find(id => nodes[id].state === 'Leader' && nodes[id].state !== 'Dead' && nodes[id].state !== 'Partitioned');
+  const activeLeader = NODE_IDS.find(id => nodes[id].state === 'Leader');
   const reachableNodesCount = getReachableCount(nodes);
   const maxTerm = Math.max(...NODE_IDS.map(id => nodes[id].currentTerm));
   const selectedNode = nodes[selectedNodeId];
