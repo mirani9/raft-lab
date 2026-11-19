@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import cors from 'cors';
 
 const app = express();
@@ -286,7 +286,8 @@ async function runElection() {
   }
 }
 
-app.post('/rpc/request-vote', async (req, res) => {
+app.post('/rpc/request-vote', async (req, res) => { // Raft RequestVote RPC
+
   if (!s.alive || s.isolated) return res.status(503).json({ term: s.currentTerm, voteGranted: false });
   const { term, candidateId, lastLogIndex = 0, lastLogTerm = 0 } = req.body || {};
   if (typeof term !== 'number') return res.status(400).json({ error: 'bad term' });
