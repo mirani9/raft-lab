@@ -25,19 +25,14 @@ const sseClients = new Set();
 function broadcast(ev) {
   const payload = `data: ${JSON.stringify(ev)}\n\n`;
   for (const res of sseClients) {
-    try {
-      res.write(payload);
-    } catch {}
+    try { res.write(payload); } catch {}
   }
 }
 
 async function ping(url) {
   const idFromUrl = url.split('/').pop() || url;
   try {
-    const r = await fetch(`${url}/status`, { signal: AbortSignal.timeout(1200) });
-    if (!r.ok) {
-      return { id: idFromUrl, url, alive: false, isolated: false, role: 'Dead', term: 0, log: [], kv: {} };
-    }
+    const r = await fetch(`${url}/status`, { signal: AbortSignal.timeout(150    if (!r.ok) return { id: idFromUrl, url, alive: false, isolated: false, role: 'Dead', term: 0, log: [], kv: {} };
     const d = await r.json();
     return { ...d, url };
   } catch {
@@ -63,26 +58,19 @@ async function snapshot() {
   };
 }
 
-function registerGatewayRoutes(prefix = '') {
-  app.get(`${prefix}/cluster`, async (_req, res) => {
-    res.json(await snapshot());
-  });
+function mountRoutes(prefix) {
+  app.get(`${prefix}/cluster`, async (_req, res) => res.json(await snapshot()));
 
   app.post(`${prefix}/write`, async (req, res) => {
     const { key, value, requestId } = req.body || {};
-    if (!key || !String(key).trim()) {
-      return res.status(400).json({ error: 'Key required.' });
-    }
+    if (!key || !String(key).trim()) return res.status(400).json({ error: 'Key required.' });
 
     const snap = await snapshot();
     const ordered = [
       ...snap.nodes.filter((n) => n.id === snap.leaderId && n.alive && !n.isolated),
       ...snap.nodes.filter((n) => n.alive && !n.isolated && n.id !== snap.leaderId),
     ];
-
-    if (ordered.length === 0) {
-      return res.status(503).json({ error: 'No active leader available.' });
-    }
+    if (!ordered.length) return res.status(503).json({ error: 'No active leader available.' });
 
     for (const node of ordered) {
       try {
@@ -104,7 +92,6 @@ function registerGatewayRoutes(prefix = '') {
         }
       } catch {}
     }
-
     return res.status(503).json({ error: 'No active leader available.' });
   });
 
@@ -113,18 +100,12 @@ function registerGatewayRoutes(prefix = '') {
     if (!['kill', 'revive', 'isolate', 'heal', 'reset'].includes(action)) {
       return res.status(400).json({ error: 'Invalid action' });
     }
-
     const snap = await snapshot();
     const target = snap.nodes.find((n) => n.id === nodeId);
-    if (!target) {
-      return res.status(404).json({ error: `Node ${nodeId} not found` });
-    }
+    if (!target) return res.status(404).json({ error: `Node ${nodeId} not found` });
 
     try {
-      const r = await fetch(`${target.url}/admin/${action}`, {
-        method: 'POST',
-        signal: AbortSignal.timeout(2000),
-      });
+      const r = await fetch(`${target.url}/admin/${action}`, { method: 'POST', signal: AbortSignal.timeout(2000) });
       const data = await r.json().catch(() => ({}));
       broadcast({
         type: `admin_${action}`,
@@ -144,19 +125,13 @@ function registerGatewayRoutes(prefix = '') {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders?.();
-
-    res.write(`data: ${JSON.stringify({ type: 'connected', term: 0, timestamp: new Date().toISOString(), message: 'SSE stream connected' })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'connected', term: 0, timestamp: new Date().toISOString(), message: 'SSE connected' })}\n\n`);
     sseClients.add(res);
-
-    req.on('close', () => {
-      sseClients.delete(res);
-    });
+    req.on('close', () => sseClients.delete(res));
   });
 }
 
-registerGatewayRoutes('');
-registerGatewayRoutes('/api');
+mountRoutes('');
+mountRoutes('/api');
 
-app.listen(PORT, () => {
-  console.log(`RaftLab Gateway listening on :${PORT} with ${NODE_URLS.length} node URL(s)`);
-});
+app.listen(PORT, () => console.log(`RaftLab Gateway on :${PORT} (${NODE_URLS.length} nodes)`));
