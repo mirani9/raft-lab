@@ -1,0 +1,76 @@
+﻿services:
+  raft-n1:
+    build: .
+    container_name: raft-n1
+    command: ["node", "services/raft-node/server.js"]
+    environment:
+      - NODE_ID=N1
+      - PORT=4001
+      - PEERS=http://raft-n1:4001,http://raft-n2:4002,http://raft-n3:4003,http://raft-n4:4004,http://raft-n5:4005
+      - STORE_URL=
+      - STORE_TOKEN=
+    ports:
+      - "4001:4001"
+  raft-n2:
+    build: .
+    container_name: raft-n2
+    command: ["node", "services/raft-node/server.js"]
+    environment:
+      - NODE_ID=N2
+      - PORT=4002
+      - PEERS=http://raft-n1:4001,http://raft-n2:4002,http://raft-n3:4003,http://raft-n4:4004,http://raft-n5:4005
+      - STORE_URL=
+      - STORE_TOKEN=
+    ports:
+      - "4002:4002"
+  raft-n3:
+    build: .
+    container_name: raft-n3
+    command: ["node", "services/raft-node/server.js"]
+    environment:
+      - NODE_ID=N3
+      - PORT=4003
+      - PEERS=http://raft-n1:4001,http://raft-n2:4002,http://raft-n3:4003,http://raft-n4:4004,http://raft-n5:4005
+      - STORE_URL=
+      - STORE_TOKEN=
+    ports:
+      - "4003:4003"
+  raft-n4:
+    build: .
+    container_name: raft-n4
+    command: ["node", "services/raft-node/server.js"]
+    environment:
+      - NODE_ID=N4
+      - PORT=4004
+      - PEERS=http://raft-n1:4001,http://raft-n2:4002,http://raft-n3:4003,http://raft-n4:4004,http://raft-n5:4005
+      - STORE_URL=
+      - STORE_TOKEN=
+    ports:
+      - "4004:4004"
+  raft-n5:
+    build: .
+    container_name: raft-n5
+    command: ["node", "services/raft-node/server.js"]
+    environment:
+      - NODE_ID=N5
+      - PORT=4005
+      - PEERS=http://raft-n1:4001,http://raft-n2:4002,http://raft-n3:4003,http://raft-n4:4004,http://raft-n5:4005
+      - STORE_URL=
+      - STORE_TOKEN=
+    ports:
+      - "4005:4005"
+  gateway:
+    build: .
+    container_name: raft-gateway
+    command: ["node", "services/gateway/server.js"]
+    environment:
+      - GATEWAY_PORT=5000
+      - NODE_URLS=http://raft-n1:4001,http://raft-n2:4002,http://raft-n3:4003,http://raft-n4:4004,http://raft-n5:4005
+    ports:
+      - "5000:5000"
+    depends_on:
+      - raft-n1
+      - raft-n2
+      - raft-n3
+      - raft-n4
+      - raft-n5
