@@ -1,13 +1,98 @@
 ﻿services:
   - type: web
-    name: raftlab-playground
+    name: raft-gateway
     runtime: docker
     dockerfilePath: ./Dockerfile
-    healthCheckPath: /health
+    dockerCommand: node services/gateway/server.js
+    envVars:
+      - key: GATEWAY_PORT
+        value: "5000"
+      - key: NODE_URLS
+        sync: false
+      - key: RAFT_NODE_URL
+        sync: false
+
+  - type: web
+    name: raft-node-1
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: node services/raft-node/server.js
     envVars:
       - key: NODE_ID
-        value: A
-      - key: TOTAL_NODES
-        value: "5"
-      - key: QUORUM_OVERRIDE
-        value: ""
+        value: "N1"
+      - key: PORT
+        value: "4001"
+      - key: PEERS
+        sync: false
+      - key: STORE_URL
+        sync: false
+      - key: STORE_TOKEN
+        sync: false
+
+  - type: web
+    name: raft-node-2
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: node services/raft-node/server.js
+    envVars:
+      - key: NODE_ID
+        value: "N2"
+      - key: PORT
+        value: "4002"
+      - key: PEERS
+        sync: false
+      - key: STORE_URL
+        sync: false
+      - key: STORE_TOKEN
+        sync: false
+
+  - type: web
+    name: raft-node-3
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: node services/raft-node/server.js
+    envVars:
+      - key: NODE_ID
+        value: "N3"
+      - key: PORT
+        value: "4003"
+      - key: PEERS
+        sync: false
+      - key: STORE_URL
+        sync: false
+      - key: STORE_TOKEN
+        sync: false
+
+  - type: web
+    name: raft-node-4
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: node services/raft-node/server.js
+    envVars:
+      - key: NODE_ID
+        value: "N4"
+      - key: PORT
+        value: "4004"
+      - key: PEERS
+        sync: false
+      - key: STORE_URL
+        sync: false
+      - key: STORE_TOKEN
+        sync: false
+
+  - type: web
+    name: raft-node-5
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: node services/raft-node/server.js
+    envVars:
+      - key: NODE_ID
+        value: "N5"
+      - key: PORT
+        value: "4005"
+      - key: PEERS
+        sync: false
+      - key: STORE_URL
+        sync: false
+      - key: STORE_TOKEN
+        sync: false
