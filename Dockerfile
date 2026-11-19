@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿FROM node:20-alpine
 WORKDIR /app
 COPY services/raft-node/package.json ./services/raft-node/package.json
@@ -8,3 +9,12 @@ COPY services/raft-node/server.js ./services/raft-node/server.js
 COPY services/gateway/server.js ./services/gateway/server.js
 EXPOSE 4000 5000
 CMD ["node", "services/raft-node/server.js"]
+=======
+﻿FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD ["npx", "ts-node", "src/server.ts"]
+>>>>>>> 505bfbb8442ed4f931dea9cf66bda4ea6365215e

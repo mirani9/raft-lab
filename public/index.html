@@ -1,0 +1,445 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RaftLab v2.6 Playground</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #131b2e;
+      --card: #19233b;
+      --border: #2a395c;
+      --text: #e8eefc;
+      --muted: #95a4c7;
+      --leader: #22c55e;
+      --follower: #38bdf8;
+      --candidate: #eab308;
+      --dead: #ef4444;
+      --isolated: #a855f7;
+    }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); padding: 20px; }
+    .topbar { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; background: var(--panel); border: 1px solid var(--border); padding: 14px 18px; border-radius: 10px; margin-bottom: 18px; }
+    .metrics { display: flex; flex-wrap: wrap; gap: 18px; font-size: 14px; }
+    .metric span { color: var(--muted); display: block; font-size: 11px; text-transform: uppercase; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    select, input, button { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; font-size: 13px; cursor: pointer; }
+    button:hover { border-color: #60a5fa; }
+    button.danger { background: #3b141c; border-color: #ef4444; }
+    button.warn { background: #382b0c; border-color: #eab308; }
+    button.primary { background: #163a26; border-color: #22c55e; }
+    .grid-main { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; }
+    @media (max-width: 960px) { .grid-main { grid-template-columns: 1fr; } }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+    .nodes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 12px; margin-top: 12px; }
+    .node-card { position: relative; background: var(--card); border: 2px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: transform 0.12s; }
+    .node-card.selected { outline: 2px solid #ffffff; }
+    .node-card.role-Leader { border-color: var(--leader); }
+    .node-card.role-Follower { border-color: var(--follower); }
+    .node-card.role-Candidate { border-color: var(--candidate); background: #2d250d; }
+    .node-card.role-Dead { border-color: var(--dead); opacity: 0.72; }
+    .node-card.isolated { border-style: dashed; border-color: var(--isolated); }
+    .del-btn { position: absolute; top: 6px; right: 6px; padding: 2px 7px; font-size: 12px; line-height: 1.2; background: rgba(0,0,0,0.45); border-color: transparent; color: #fca5a5; }
+    .del-btn:hover { background: #7f1d1d; color: #fff; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; margin: 6px 0; }
+    .b-Leader { background: rgba(34,197,94,0.2); color: #86efac; }
+    .b-Follower { background: rgba(56,189,248,0.2); color: #7dd3fc; }
+    .b-Candidate { background: rgba(234,179,8,0.28); color: #fde047; }
+    .b-Dead { background: rgba(239,68,68,0.22); color: #fca5a5; }
+    .b-Iso { background: rgba(168,85,247,0.25); color: #d8b4fe; }
+    .events { max-height: 360px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .ev { padding: 6px 8px; border-radius: 5px; background: var(--card); border-left: 3px solid var(--follower); }
+    .ev.err { border-left-color: var(--dead); color: #fecaca; }
+    .ev.ok { border-left-color: var(--leader); color: #bbf7d0; }
+    .ev.cand { border-left-color: var(--candidate); color: #fef08a; }
+    .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <strong>RAFTLAB v2.6 PLAYGROUND</strong>
+      <div style="font-size:12px;color:var(--muted);">Strict Quorum • Visible Candidates • Partition Simulation • 3–10 Nodes</div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><span>Term</span><strong id="m-term">#1</strong></div>
+      <div class="metric"><span>Leader</span><strong id="m-leader">None</strong></div>
+      <div class="metric"><span>Reachable / Size</span><strong id="m-reach">5 / 5</strong></div>
+      <div class="metric"><span>Majority Req</span><strong id="m-maj">3 Votes</strong></div>
+    </div>
+    <div class="controls">
+      <label style="font-size:12px;color:var(--muted);">Nodes (3–10):
+        <select id="node-count-select" onchange="setNodeCount(Number(this.value))"></select>
+      </label>
+      <button class="primary" onclick="addNode()">+ Add Node</button>
+      <button class="warn" onclick="triggerSplitBrain()">⚡ Split-Brain Test</button>
+      <button onclick="healAll()">🟢 Heal & Reset</button>
+    </div>
+  </div>
+
+  <div class="grid-main">
+    <div>
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong>Cluster Mesh (<span id="mesh-count">5</span> Nodes)</strong>
+          <span style="font-size:12px;color:var(--muted);">Click card to select • Click × at top-right to remove (min 3)</span>
+        </div>
+        <div id="nodes-grid" class="nodes-grid"></div>
+      </div>
+
+      <div class="panel">
+        <strong>Selected Node [<span id="sel-id">A</span>] Control Panel</strong>
+        <div class="row">
+          <button class="danger" onclick="killSelected()">Kill</button>
+          <button class="primary" onclick="reviveSelected()">Revive</button>
+          <button class="warn" onclick="isolateSelected()">Isolate</button>
+          <button onclick="healSelected()">Heal</button>
+          <button class="warn" onclick="startElectionFromSelected()">Run Election (Show Candidate)</button>
+        </div>
+        <div id="sel-meta" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
+      </div>
+
+      <div class="panel">
+        <strong>Client Write Terminal</strong>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+          Writes commit only when reachable alive non-isolated nodes are greater than or equal to majority.
+        </div>
+        <div class="row">
+          <input id="kv-key" placeholder="Key (e.g. balance)" value="balance" />
+          <input id="kv-val" placeholder="Value (e.g. 500)" value="500" />
+          <button class="primary" onclick="sendWrite()">Send Write</button>
+        </div>
+        <div id="write-status" style="margin-top:10px;font-size:13px;"></div>
+        <div id="kv-view" style="margin-top:8px;font-size:12px;color:var(--muted);">State KV: {}</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <strong>Event Stream</strong>
+      <div id="events" class="events" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <script>
+    const ALL_IDS = ['A','B','C','D','E','F','G','H','I','J'];
+    let nodes = [];
+    let selectedId = 'A';
+    let term = 1;
+    let kvStore = {};
+
+    const selDropdown = document.getElementById('node-count-select');
+    for (let n = 3; n <= 10; n++) {
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = `${n} Nodes (Majority ${Math.floor(n/2)+1})`;
+      if (n === 5) opt.selected = true;
+      selDropdown.appendChild(opt);
+    }
+
+    function logEvent(msg, cls = '') {
+      const box = document.getElementById('events');
+      const div = document.createElement('div');
+      div.className = `ev ${cls}`;
+      const ts = new Date().toLocaleTimeString();
+      div.textContent = `[${ts}] ${msg}`;
+      box.prepend(div);
+    }
+
+    function makeNode(id, role = 'Follower', commitIndex = 0) {
+      return { id, role, term, commitIndex, isAlive: true, isIsolated: false };
+    }
+
+    function initCluster(count = 5) {
+      const clamped = Math.max(3, Math.min(10, count));
+      term = 1;
+      kvStore = {};
+      nodes = ALL_IDS.slice(0, clamped).map((id, idx) =>
+        makeNode(id, idx === 0 ? 'Leader' : 'Follower', 0)
+      );
+      selectedId = nodes[0].id;
+      selDropdown.value = String(clamped);
+      logEvent(`Initialized ${clamped}-node cluster. Leader: Node ${nodes[0].id} (Term #${term}).`, 'ok');
+      render();
+    }
+
+    function setNodeCount(count) {
+      initCluster(count);
+    }
+
+    function addNode() {
+      if (nodes.length >= 10) {
+        logEvent('Maximum cluster size is 10 nodes.', 'err');
+        return;
+      }
+      const nextId = ALL_IDS.find(id => !nodes.some(n => n.id === id));
+      if (!nextId) return;
+      nodes.push(makeNode(nextId, 'Follower', 0));
+      selDropdown.value = String(nodes.length);
+      logEvent(`Added Node ${nextId} and connected to cluster (${nodes.length} nodes).`, 'ok');
+      render();
+    }
+
+    function removeNode(id, ev) {
+      ev.stopPropagation();
+      if (nodes.length <= 3) {
+        logEvent('Minimum cluster size is 3 nodes. Cannot remove more nodes.', 'err');
+        return;
+      }
+      const removed = nodes.find(n => n.id === id);
+      nodes = nodes.filter(n => n.id !== id);
+      if (selectedId === id) selectedId = nodes[0].id;
+      selDropdown.value = String(nodes.length);
+      logEvent(`Removed Node ${id} from cluster (${nodes.length} nodes remaining).`, 'warn');
+      if (removed && removed.role === 'Leader') {
+        runElectionCycle();
+      } else {
+        render();
+      }
+    }
+
+    function getReachableNodes() {
+      return nodes.filter(n => n.isAlive && !n.isIsolated);
+    }
+
+    function getMajority() {
+      return Math.floor(nodes.length / 2) + 1;
+    }
+
+    function runElectionCycle() {
+      const eligible = getReachableNodes();
+      const majority = getMajority();
+      if (eligible.length === 0) {
+        logEvent('No reachable nodes available to hold an election.', 'err');
+        render();
+        return;
+      }
+      term += 1;
+      nodes.forEach(n => {
+        n.term = term;
+        if (n.isAlive && !n.isIsolated) {
+          n.role = 'Candidate';
+        }
+      });
+      logEvent(`Term #${term} election started: eligible nodes entered CANDIDATE state.`, 'cand');
+      render();
+
+      setTimeout(() => {
+        const currentEligible = getReachableNodes();
+        if (currentEligible.length >= majority) {
+          const winner = currentEligible[0];
+          currentEligible.forEach((n, i) => {
+            n.role = i === 0 ? 'Leader' : 'Follower';
+            n.term = term;
+          });
+          logEvent(`Node ${winner.id} won Term #${term} election with ${currentEligible.length}/${nodes.length} votes (majority ${majority}).`, 'ok');
+        } else {
+          currentEligible.forEach(n => {
+            n.role = 'Follower';
+            n.term = term;
+          });
+          logEvent(`Election in Term #${term} had no majority (${currentEligible.length}/${nodes.length} reachable, need ${majority}). Remaining Followers.`, 'err');
+        }
+        render();
+      }, 900);
+    }
+
+    function killSelected() {
+      const n = nodes.find(x => x.id === selectedId);
+      if (!n) return;
+      const wasLeader = n.role === 'Leader';
+      n.isAlive = false;
+      n.isIsolated = false;
+      n.role = 'Dead';
+      logEvent(`Node ${n.id} killed.`, 'err');
+      if (wasLeader) {
+        runElectionCycle();
+      } else {
+        render();
+      }
+    }
+
+    function reviveSelected() {
+      const n = nodes.find(x => x.id === selectedId);
+      if (!n) return;
+      n.isAlive = true;
+      n.isIsolated = false;
+      n.role = 'Follower';
+      n.term = term;
+      logEvent(`Node ${n.id} revived as Follower in Term #${term}.`, 'ok');
+      render();
+    }
+
+    function isolateSelected() {
+      const n = nodes.find(x => x.id === selectedId);
+      if (!n || !n.isAlive) return;
+      const wasLeader = n.role === 'Leader';
+      n.isIsolated = true;
+      n.role = 'Follower';
+      logEvent(`Node ${n.id} isolated from cluster network.`, 'cand');
+      if (wasLeader) {
+        runElectionCycle();
+      } else {
+        render();
+      }
+    }
+
+    function healSelected() {
+      const n = nodes.find(x => x.id === selectedId);
+      if (!n || !n.isAlive) return;
+      n.isIsolated = false;
+      n.term = term;
+      logEvent(`Node ${n.id} network connection healed.`, 'ok');
+      render();
+    }
+
+    function startElectionFromSelected() {
+      const n = nodes.find(x => x.id === selectedId);
+      if (!n || !n.isAlive || n.isIsolated) {
+        logEvent('Selected node must be alive and not isolated to run election.', 'err');
+        return;
+      }
+      term += 1;
+      n.role = 'Candidate';
+      n.term = term;
+      logEvent(`Node ${n.id} transitioned to CANDIDATE for Term #${term}.`, 'cand');
+      render();
+      setTimeout(() => {
+        const reachable = getReachableNodes();
+        const maj = getMajority();
+        if (reachable.length >= maj && n.isAlive && !n.isIsolated) {
+          reachable.forEach(peer => {
+            peer.role = peer.id === n.id ? 'Leader' : 'Follower';
+            peer.term = term;
+          });
+          logEvent(`Node ${n.id} elected LEADER for Term #${term} (${reachable.length}/${nodes.length} reachable).`, 'ok');
+        } else {
+          n.role = 'Follower';
+          logEvent(`Node ${n.id} stepped back to Follower: insufficient majority (${reachable.length}/${nodes.length}, need ${maj}).`, 'err');
+        }
+        render();
+      }, 900);
+    }
+
+    function triggerSplitBrain() {
+      if (nodes.length < 4) {
+        logEvent('Need at least 4 nodes for a clean split-brain partition.', 'err');
+        return;
+      }
+      const splitIdx = Math.floor(nodes.length / 2);
+      const minority = nodes.slice(0, splitIdx);
+      const majorityGroup = nodes.slice(splitIdx);
+      term += 1;
+      minority.forEach(n => {
+        if (n.isAlive) {
+          n.isIsolated = true;
+          n.role = 'Follower';
+          n.term = term;
+        }
+      });
+      majorityGroup.forEach((n, idx) => {
+        if (n.isAlive) {
+          n.isIsolated = false;
+          n.role = idx === 0 ? 'Leader' : 'Follower';
+          n.term = term;
+        }
+      });
+      const minIds = minority.map(x => x.id).join(',');
+      const majIds = majorityGroup.map(x => x.id).join(',');
+      logEvent(`Split-Brain active in Term #${term}: Minority [${minIds}] isolated vs Majority [${majIds}] (Leader: ${majorityGroup[0].id}).`, 'cand');
+      render();
+    }
+
+    function healAll() {
+      nodes.forEach(n => {
+        n.isAlive = true;
+        n.isIsolated = false;
+        n.role = 'Follower';
+        n.term = term;
+      });
+      const maj = getMajority();
+      if (nodes.length >= maj) {
+        nodes[0].role = 'Leader';
+        logEvent(`Cluster healed. Node ${nodes[0].id} is active Leader in Term #${term}.`, 'ok');
+      }
+      render();
+    }
+
+    function sendWrite() {
+      const key = document.getElementById('kv-key').value.trim() || 'key';
+      const value = document.getElementById('kv-val').value.trim() || 'value';
+      const statusEl = document.getElementById('write-status');
+      const leader = nodes.find(n => n.role === 'Leader' && n.isAlive && !n.isIsolated);
+      const reachable = getReachableNodes();
+      const maj = getMajority();
+
+      if (!leader) {
+        statusEl.style.color = '#fca5a5';
+        statusEl.textContent = `Rejected: No reachable active Leader in majority partition (${reachable.length}/${nodes.length} reachable, need ${maj}).`;
+        logEvent(`Write [${key} = ${value}] rejected: no active reachable Leader.`, 'err');
+        return;
+      }
+
+      if (reachable.length < maj) {
+        statusEl.style.color = '#fca5a5';
+        statusEl.textContent = `Quorum Lost: Only ${reachable.length}/${nodes.length} nodes reachable (need ${maj}). Write NOT committed.`;
+        logEvent(`Write [${key} = ${value}] blocked on Leader ${leader.id}: quorum not met (${reachable.length}/${maj}).`, 'err');
+        return;
+      }
+
+      kvStore[key] = value;
+      reachable.forEach(n => {
+        n.commitIndex += 1;
+      });
+      statusEl.style.color = '#86efac';
+      statusEl.textContent = `Committed [${key} = ${value}] via Leader ${leader.id} (${reachable.length}/${nodes.length} reachable, majority ${maj}).`;
+      logEvent(`Write [${key} = ${value}] committed by Leader ${leader.id} (${reachable.length}/${nodes.length} nodes).`, 'ok');
+      render();
+    }
+
+    function render() {
+      const reachable = getReachableNodes();
+      const maj = getMajority();
+      const leader = nodes.find(n => n.role === 'Leader' && n.isAlive && !n.isIsolated);
+
+      document.getElementById('m-term').textContent = `#${term}`;
+      document.getElementById('m-leader').textContent = leader ? leader.id : 'None';
+      document.getElementById('m-reach').textContent = `${reachable.length} / ${nodes.length}`;
+      document.getElementById('m-maj').textContent = `${maj} Votes`;
+      document.getElementById('mesh-count').textContent = String(nodes.length);
+
+      const grid = document.getElementById('nodes-grid');
+      grid.innerHTML = '';
+      nodes.forEach(n => {
+        const card = document.createElement('div');
+        card.className = `node-card role-${n.role} ${n.isIsolated ? 'isolated' : ''} ${n.id === selectedId ? 'selected' : ''}`;
+        card.onclick = () => { selectedId = n.id; render(); };
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'del-btn';
+        delBtn.title = 'Remove node';
+        delBtn.textContent = '×';
+        delBtn.onclick = (e) => removeNode(n.id, e);
+
+        card.innerHTML = `
+          <div><strong>Node ${n.id}</strong></div>
+          <div class="badge b-${n.role}">${n.role}</div>
+          ${n.isIsolated ? '<div class="badge b-Iso">Isolated</div>' : ''}
+          <div style="font-size:12px;color:var(--muted);">Term: ${n.term} • Commit: #${n.commitIndex}</div>
+        `;
+        card.appendChild(delBtn);
+        grid.appendChild(card);
+      });
+
+      const sel = nodes.find(x => x.id === selectedId) || nodes[0];
+      selectedId = sel.id;
+      document.getElementById('sel-id').textContent = sel.id;
+      document.getElementById('sel-meta').textContent =
+        `Role: ${sel.role} | Alive: ${sel.isAlive} | Isolated: ${sel.isIsolated} | Term: ${sel.term} | Commit Index: #${sel.commitIndex}`;
+      document.getElementById('kv-view').textContent = `State KV: ${JSON.stringify(kvStore)}`;
+    }
+
+    initCluster(5);
+  </script>
+</body>
+</html>

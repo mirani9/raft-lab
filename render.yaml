@@ -1,0 +1,13 @@
+﻿services:
+  - type: web
+    name: raftlab-playground
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ID
+        value: A
+      - key: TOTAL_NODES
+        value: "5"
+      - key: QUORUM_OVERRIDE
+        value: ""

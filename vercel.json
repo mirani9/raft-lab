@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 ﻿{
   "outputDirectory": "dashboard",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+=======
+{
+  "outputDirectory": "public",
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+>>>>>>> 505bfbb8442ed4f931dea9cf66bda4ea6365215e
 }
