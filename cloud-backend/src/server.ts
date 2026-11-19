@@ -1,7 +1,11 @@
-﻿import express, { Request, Response } from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
 
 type Role = "Follower" | "Candidate" | "Leader" | "Dead" | "Partitioned";
+
+const THIS_NODE_ID = process.env.NODE_ID ?? "A";
+const HTTP_PORT = parseInt(process.env.PORT ?? "4000", 10);
+
 
 interface LogEntry {
   index: number;
@@ -21,7 +25,7 @@ interface RaftNode {
   partitionGroup: number;
 }
 
-const NODE_IDS = ["A", "B", "C", "D", "E"];
+const NODE_IDS = process.env.NODE_IDS?.split(",") ?? ["A", "B", "C", "D", "E"];
 const nodes: Record<string, RaftNode> = {};
 const eventStream: string[] = [];
 
@@ -212,7 +216,7 @@ app.post("/api/chaos/:action", (req: Request, res: Response) => {
   res.json({ success: true, nodes: Object.values(nodes) });
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = HTTP_PORT;
 app.listen(PORT, () => {
   console.log(`VLAB Cloud Raft Engine running on port ${PORT}`);
 });

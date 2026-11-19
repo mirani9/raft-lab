@@ -1,20 +1,30 @@
-<<<<<<< HEAD
-﻿FROM node:20-alpine
+# --------------------------------------------------------------
+# Dockerfile – 2‑stage build for the Raft engine
+# --------------------------------------------------------------
+FROM node:20-alpine AS builder
+
 WORKDIR /app
-COPY services/raft-node/package.json ./services/raft-node/package.json
-COPY services/gateway/package.json ./services/gateway/package.json
-RUN cd services/raft-node && npm install --omit=dev
-RUN cd services/gateway && npm install --omit=dev
-COPY services/raft-node/server.js ./services/raft-node/server.js
-COPY services/gateway/server.js ./services/gateway/server.js
-EXPOSE 4000 5000
-CMD ["node", "services/raft-node/server.js"]
-=======
-﻿FROM node:18-alpine
+
+# Install only production dependencies
+COPY cloud-backend/package*.json ./
+RUN npm ci --omit=dev
+
+# Copy source & compile
+COPY cloud-backend/tsconfig.json ./
+COPY cloud-backend/src ./src
+RUN npx tsc
+
+# --------------------------------------------------------------
+# Runtime image – tiny Alpine with only the compiled output
+# --------------------------------------------------------------
+FROM node:20-alpine
+
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 3000
-CMD ["npx", "ts-node", "src/server.ts"]
->>>>>>> 505bfbb8442ed4f931dea9cf66bda4ea6365215e
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
+
+EXPOSE 4000
+
+CMD ["node", "dist/server.js"]

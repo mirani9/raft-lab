@@ -5,7 +5,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
-const NODE_IDS = ["A", "B", "C", "D", "E"];
+const THIS_NODE_ID = process.env.NODE_ID ?? "A";
+const HTTP_PORT = parseInt(process.env.PORT ?? "4000", 10);
+const NODE_IDS = process.env.NODE_IDS?.split(",") ?? ["A", "B", "C", "D", "E"];
 const nodes = {};
 const eventStream = [];
 function logEvent(msg) {
@@ -168,7 +170,7 @@ app.post("/api/chaos/:action", (req, res) => {
     }
     res.json({ success: true, nodes: Object.values(nodes) });
 });
-const PORT = process.env.PORT || 4000;
+const PORT = HTTP_PORT;
 app.listen(PORT, () => {
     console.log(`VLAB Cloud Raft Engine running on port ${PORT}`);
 });
