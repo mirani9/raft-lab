@@ -132,6 +132,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Simple health‑check route – renders a friendly message at the root URL
+app.get("/", (_req: Request, res: Response) => {
+  res.send("🛡️ Raft cluster is alive – use /api/cluster");
+});
+
 app.get("/api/cluster", (_req: Request, res: Response) => {
   res.json({
     nodes: Object.values(nodes),

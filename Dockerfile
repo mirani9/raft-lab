@@ -7,12 +7,12 @@ WORKDIR /app
 
 # Install only production dependencies
 COPY cloud-backend/package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 # Copy source & compile
 COPY cloud-backend/tsconfig.json ./
 COPY cloud-backend/src ./src
-RUN npx tsc
+RUN npm install typescript && npx tsc
 
 # --------------------------------------------------------------
 # Runtime image – tiny Alpine with only the compiled output
