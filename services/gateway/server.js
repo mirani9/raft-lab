@@ -32,7 +32,8 @@ function broadcast(ev) {
 async function ping(url) {
   const idFromUrl = url.split('/').pop() || url;
   try {
-    const r = await fetch(`${url}/status`, { signal: AbortSignal.timeout(150    if (!r.ok) return { id: idFromUrl, url, alive: false, isolated: false, role: 'Dead', term: 0, log: [], kv: {} };
+    const r = await fetch(`${url}/status`, { signal: AbortSignal.timeout(1500) });
+    if (!r.ok) return { id: idFromUrl, url, alive: false, isolated: false, role: 'Dead', term: 0, log: [], kv: {} };
     const d = await r.json();
     return { ...d, url };
   } catch {

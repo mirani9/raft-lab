@@ -164,7 +164,7 @@
       <button class="tab-btn" data-view="learn" onclick="switchView('learn')">Learning Center</button>
     </div>
     <div class="gw-box">
-      <input id="gw" type="text" style="width:230px;" value="0) });" placeholder="Gateway URL" />
+      <input id="gw" type="text" style="width:230px;" value="" placeholder="Gateway URL" />
       <button class="ok" onclick="connectGw()">Connect</button>
       <button class="warn" onclick="splitBrain()">Split-Brain</button>
       <button onclick="healAll()">Heal All</button>
@@ -341,7 +341,8 @@
 
   <script>
     const defaultGw = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5000' : ${window.location.origin}/api;
-    let gw = (localStorage.getItem('raft_gw') || '0) });').replace(/\/+$/, '');
+    const defaultGw = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5000' : ${window.location.origin}/api;
+    let gw = (localStorage.getItem('raft_gw') || defaultGw).replace(/\/+$/, '');').replace(/\/+$/, '');
     document.getElementById('gw').value = gw;
 
     let st = { term: 0, leaderId: null, clusterSize: 0, majority: 0, reachableCount: 0, nodes: [] };
@@ -825,6 +826,8 @@
   </script>
 </body>
 </html>
+
+
 
 
 
