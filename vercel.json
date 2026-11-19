@@ -1,31 +1,6 @@
 ﻿{
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "gateway": {
-      "root": "services/gateway",
-      "framework": "express",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "raft-node",
-          "format": "url",
-          "env": "RAFT_NODE_URL"
-        }
-      ]
-    },
-    "raft-node": {
-      "root": "services/raft-node",
-      "framework": "express"
-    },
-    "cloud-backend": {
-      "root": "cloud-backend",
-      "framework": "express"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": { "service": "gateway" }
-    }
-  ]
+  "outputDirectory": "public",
+  "cleanUrls": true,
+  "trailingSlash": false
 }
