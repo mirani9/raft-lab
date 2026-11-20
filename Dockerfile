@@ -1,30 +1,14 @@
-# --------------------------------------------------------------
-# Dockerfile – 2‑stage build for the Raft engine
-# --------------------------------------------------------------
-FROM node:20-alpine AS builder
-
+﻿FROM node:20-alpine
 WORKDIR /app
 
-# Install only production dependencies
-COPY cloud-backend/package*.json ./
-RUN npm ci
+COPY services/raft-node/package.json ./services/raft-node/package.json
+COPY services/gateway/package.json ./services/gateway/package.json
 
-# Copy source & compile
-COPY cloud-backend/tsconfig.json ./
-COPY cloud-backend/src ./src
-RUN npm install typescript && npx tsc
+RUN cd services/raft-node && npm install --omit=dev
+RUN cd services/gateway && npm install --omit=dev
 
-# --------------------------------------------------------------
-# Runtime image – tiny Alpine with only the compiled output
-# --------------------------------------------------------------
-FROM node:20-alpine
+COPY services/raft-node/server.js ./services/raft-node/server.js
+COPY services/gateway/server.js ./services/gateway/server.js
 
-WORKDIR /app
-
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
-
-EXPOSE 4000
-
-CMD ["node", "dist/server.js"]
+EXPOSE 4001 4002 4003 4004 4005 5000
+CMD ["node", "services/raft-node/server.js"]

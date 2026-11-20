@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
 
 const app = express();
@@ -106,6 +106,13 @@ async function saveState() {
   await kvSet('log', JSON.stringify(s.log));
   await kvSet('snapshot', JSON.stringify(s.snapshot));
   await kvSet('applied', JSON.stringify(s.applied));
+  if (s.role === 'Leader' && STORE_URL && STORE_TOKEN) {
+    await fetch(${STORE_URL}/set/, {
+      method: 'POST',
+      headers: { Authorization: Bearer , 'Content-Type': 'application/json' },
+      body: JSON.stringify(JSON.stringify({ updatedBy: s.id, term: s.currentTerm, kv: currentKv(), log: s.log })),
+    }).catch(() => {});
+  }
 }
 
 function currentKv() {
@@ -433,6 +440,18 @@ app.post('/client/write', async (req, res) => {
   });
 });
 
+app.get('/', (_req, res) => {
+  res.json({
+    service: 'raft-consensus-node',
+    nodeId: s.id,
+    role: s.alive ? (s.isolated ? 'Isolated' : s.role) : 'Dead',
+    term: s.currentTerm,
+    commitIndex: s.commitIndex,
+    cloudStorageConnected: Boolean(STORE_URL && STORE_TOKEN),
+    logEntriesCount: s.log.length,
+  });
+});
+
 app.get('/status', (_req, res) => {
   if (!s.alive) {
     return res.status(503).json({
@@ -499,3 +518,4 @@ setInterval(async () => {
 }, 150);
 
 loadState().then(() => app.listen(PORT, () => console.log(`[${NODE_ID}] on :${PORT}`)));
+
