@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 
 const app = express();
@@ -36,12 +36,12 @@ async function clusterSnapshot() {
 
 // ==== Public API ==== //
 
-// Health check – always returns 200 if the gateway process is alive
+// Health check â€“ always returns 200 if the gateway process is alive
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
 });
 
-// Simple metrics endpoint (JSON) – useful for monitoring
+// Simple metrics endpoint (JSON) â€“ useful for monitoring
 app.get('/metrics', async (req, res) => {
   const snap = await clusterSnapshot();
   res.json({
@@ -53,7 +53,7 @@ app.get('/metrics', async (req, res) => {
   });
 });
 
-// Write endpoint – forwards the client write to the current leader only
+// Write endpoint â€“ forwards the client write to the current leader only
 app.post('/write', async (req, res) => {
   const { key, value, requestId } = req.body || {};
   if (!key || String(key).trim() === '') return res.status(400).json({ error: 'Key required.' });
@@ -77,7 +77,7 @@ app.post('/write', async (req, res) => {
   }
 });
 
-// Admin proxy – forwards admin actions to the target node
+// Admin proxy â€“ forwards admin actions to the target node
 app.post('/admin/:nodeId/:action', async (req, res) => {
   const { nodeId, action } = req.params;
   if (!['kill','revive','isolate','heal'].includes(action)) {
@@ -94,10 +94,11 @@ app.post('/admin/:nodeId/:action', async (req, res) => {
   }
 });
 
-// Cluster status endpoint – returns same shape as Vercel snapshot for UI consumption
+// Cluster status endpoint â€“ returns same shape as Vercel snapshot for UI consumption
 app.get('/cluster', async (req, res) => {
   const snap = await clusterSnapshot();
   res.json(snap);
 });
 
 app.listen(PORT, () => console.log(`Raft Gateway listening on :${PORT}`));
+
