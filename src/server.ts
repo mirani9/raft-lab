@@ -10,7 +10,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 const PORT = Number(process.env.PORT || 3000);
 const NODE_ID = (process.env.NODE_ID || 'A').toUpperCase();
 const envTotal = process.env.TOTAL_NODES ? parseInt(process.env.TOTAL_NODES, 10) : 5;
-const TOTAL_NODES = Math.max(3, Math.min(10, Number.isNaN(envTotal) ? 5 : envTotal));
+const TOTAL_NODES = Math.max(3, Math.min(5, Number.isNaN(envTotal) ? 5 : envTotal));
 
 const envQuorum = process.env.QUORUM_OVERRIDE ? parseInt(process.env.QUORUM_OVERRIDE, 10) : NaN;
 const DEFAULT_MAJORITY = Math.floor(TOTAL_NODES / 2) + 1;
@@ -197,3 +197,4 @@ app.post('/control/heal', (_req: Request, res: Response) => {
 app.listen(PORT, () => {
   console.log(`Raft Node ${NODE_ID} listening on ${PORT} (cluster=${TOTAL_NODES}, majority=${MAJORITY})`);
 });
+
