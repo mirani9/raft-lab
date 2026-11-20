@@ -2,33 +2,103 @@ version: "3.9"
 
 services:
   # --------------------------------------------------------------
-  #  One service per Raft node.  Duplicate or remove blocks to add/remove nodes.
+  # Five Raft nodes – each runs in its own container, has its own ID
   # --------------------------------------------------------------
   node-a:
-    image: mirani9/raft-engine:v2.6
+    build: ./services/raft-node
     container_name: raft-node-a
     environment:
       - NODE_ID=A
-      - PORT=4000
+      - PORT=4001
+      - PEERS=http://node-b:4002,http://node-c:4003,http://node-d:4004,http://node-e:4005
+      - STORE_URL=${STORE_URL}
+      - STORE_TOKEN=${STORE_TOKEN}
     ports:
-      - "4000:4000"
+      - "4001:4001"
+    restart: unless-stopped
 
   node-b:
-    image: mirani9/raft-engine:v2.6
+    build: ./services/raft-node
     container_name: raft-node-b
     environment:
       - NODE_ID=B
-      - PORT=4001
+      - PORT=4002
+      - PEERS=http://node-a:4001,http://node-c:4003,http://node-d:4004,http://node-e:4005
+      - STORE_URL=${STORE_URL}
+      - STORE_TOKEN=${STORE_TOKEN}
     ports:
-      - "4001:4000"
+      - "4002:4002"
+    restart: unless-stopped
 
   node-c:
-    image: mirani9/raft-engine:v2.6
+    build: ./services/raft-node
     container_name: raft-node-c
     environment:
       - NODE_ID=C
-      - PORT=4002
+      - PORT=4003
+      - PEERS=http://node-a:4001,http://node-b:4002,http://node-d:4004,http://node-e:4005
+      - STORE_URL=${STORE_URL}
+      - STORE_TOKEN=${STORE_TOKEN}
     ports:
-      - "4002:4000"
+      - "4003:4003"
+    restart: unless-stopped
 
-  # Add more nodes (D, E, …) by copying a block and changing NODE_ID & host port.
+  node-d:
+    build: ./services/raft-node
+    container_name: raft-node-d
+    environment:
+      - NODE_ID=D
+      - PORT=4004
+      - PEERS=http://node-a:4001,http://node-b:4002,http://node-c:4003,http://node-e:4005
+      - STORE_URL=${STORE_URL}
+      - STORE_TOKEN=${STORE_TOKEN}
+    ports:
+      - "4004:4004"
+    restart: unless-stopped
+
+  node-e:
+    build: ./services/raft-node
+    container_name: raft-node-e
+    environment:
+      - NODE_ID=E
+      - PORT=4005
+      - PEERS=http://node-a:4001,http://node-b:4002,http://node-c:4003,http://node-d:4004
+      - STORE_URL=${STORE_URL}
+      - STORE_TOKEN=${STORE_TOKEN}
+    ports:
+      - "4005:4005"
+    restart: unless-stopped
+
+  # --------------------------------------------------------------
+  # Gateway – discovers leader, forwards writes, exposes health/metrics
+  # --------------------------------------------------------------
+  gateway:
+    build: ./services/gateway
+    container_name: raft-gateway
+    environment:
+      - GATEWAY_PORT=5000
+      - NODE_URLS=http://node-a:4001,http://node-b:4002,http://node-c:4003,http://node-d:4004,http://node-e:4005
+      - STORE_URL=${STORE_URL}
+      - STORE_TOKEN=${STORE_TOKEN}
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    depends_on:
+      - node-a
+      - node-b
+      - node-c
+      - node-d
+      - node-e
+
+  # --------------------------------------------------------------
+  # Writer client – continuously sends writes to the gateway
+  # --------------------------------------------------------------
+  writer:
+    build: ./client
+    container_name: raft-writer
+    environment:
+      - GATEWAY_URL=http://gateway:5000/write
+      - INTERVAL_MS=1000
+    restart: unless-stopped
+    depends_on:
+      - gateway
