@@ -3,444 +3,405 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RaftLab v2.6 Playground</title>
+  <title>RAFTLAB 2.6 — Cloud Distributed Consensus & WAL Engine</title>
   <style>
     :root {
-      --bg: #0b1020;
-      --panel: #131b2e;
-      --card: #19233b;
-      --border: #2a395c;
-      --text: #e8eefc;
-      --muted: #95a4c7;
-      --leader: #22c55e;
-      --follower: #38bdf8;
-      --candidate: #eab308;
-      --dead: #ef4444;
-      --isolated: #a855f7;
+      --bg: #070b14; --panel: #0e1526; --card: #16223d; --border: #24355c;
+      --text: #eef3ff; --muted: #93a6cf; --accent: #38bdf8;
+      --leader: #22c55e; --follower: #38bdf8; --candidate: #eab308;
+      --dead: #ef4444; --iso: #a855f7;
     }
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
-    body { margin: 0; background: var(--bg); color: var(--text); padding: 20px; }
-    .topbar { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; background: var(--panel); border: 1px solid var(--border); padding: 14px 18px; border-radius: 10px; margin-bottom: 18px; }
-    .metrics { display: flex; flex-wrap: wrap; gap: 18px; font-size: 14px; }
-    .metric span { color: var(--muted); display: block; font-size: 11px; text-transform: uppercase; }
-    .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    select, input, button { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; font-size: 13px; cursor: pointer; }
-    button:hover { border-color: #60a5fa; }
-    button.danger { background: #3b141c; border-color: #ef4444; }
-    button.warn { background: #382b0c; border-color: #eab308; }
-    button.primary { background: #163a26; border-color: #22c55e; }
-    .grid-main { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; }
-    @media (max-width: 960px) { .grid-main { grid-template-columns: 1fr; } }
-    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 18px; }
-    .nodes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 12px; margin-top: 12px; }
-    .node-card { position: relative; background: var(--card); border: 2px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: transform 0.12s; }
-    .node-card.selected { outline: 2px solid #ffffff; }
+    * { box-sizing: border-box; font-family: Inter, system-ui, -apple-system, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); }
+    .topbar {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 10px 18px; background: #0a101d; border-bottom: 1px solid var(--border); font-size: 12px;
+    }
+    .brand-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .brand { font-weight: 800; letter-spacing: 0.06em; font-size: 14px; color: #fff; }
+    .pill { padding: 3px 9px; border-radius: 999px; font-weight: 600; border: 1px solid var(--border); background: var(--panel); color: var(--muted); }
+    .pill.ok { color: #86efac; border-color: rgba(34,197,94,0.45); background: rgba(34,197,94,0.12); }
+    .pill.err { color: #fca5a5; border-color: rgba(239,68,68,0.45); background: rgba(239,68,68,0.12); }
+    .pill.live { color: #7dd3fc; border-color: rgba(56,189,248,0.45); background: rgba(56,189,248,0.12); }
+    .nav {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;
+      padding: 10px 18px; background: var(--panel); border-bottom: 1px solid var(--border);
+    }
+    .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tab-btn {
+      background: transparent; color: var(--muted); border: 1px solid transparent;
+      padding: 7px 12px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .tab-btn:hover { color: var(--text); background: var(--card); }
+    .tab-btn.active { color: #fff; background: var(--card); border-color: var(--accent); }
+    .gw-box { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    input, button {
+      background: var(--card); color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; padding: 7px 11px; font-size: 13px;
+    }
+    button { cursor: pointer; font-weight: 600; }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: #0c4a6e; border-color: var(--accent); color: #e0f2fe; }
+    button.ok { background: #143624; border-color: var(--leader); color: #dcfce7; }
+    button.warn { background: #382a0c; border-color: var(--candidate); color: #fef9c3; }
+    button.danger { background: #3a141c; border-color: var(--dead); color: #fee2e2; }
+    .container { max-width: 1380px; margin: 0 auto; padding: 18px; }
+    .hidden { display: none !important; }
+    .stats-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat-card { background: var(--panel); border: 1px solid var(--border); border-radius: 9px; padding: 12px 14px; }
+    .stat-card span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat-card strong { font-size: 18px; margin-top: 4px; display: block; }
+    .lab-grid { display: grid; grid-template-columns: 2.25fr 1fr; gap: 16px; }
+    @media (max-width: 1040px) { .lab-grid { grid-template-columns: 1fr; } }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 15px; margin-bottom: 16px; }
+    .panel-hdr { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    .panel-title { font-size: 14px; font-weight: 700; }
+    .panel-sub { font-size: 12px; color: var(--muted); }
+    .nodes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 12px; }
+    .node-card { background: var(--card); border: 2px solid var(--border); border-radius: 9px; padding: 12px; }
     .node-card.role-Leader { border-color: var(--leader); }
     .node-card.role-Follower { border-color: var(--follower); }
-    .node-card.role-Candidate { border-color: var(--candidate); background: #2d250d; }
-    .node-card.role-Dead { border-color: var(--dead); opacity: 0.72; }
-    .node-card.isolated { border-style: dashed; border-color: var(--isolated); }
-    .del-btn { position: absolute; top: 6px; right: 6px; padding: 2px 7px; font-size: 12px; line-height: 1.2; background: rgba(0,0,0,0.45); border-color: transparent; color: #fca5a5; }
-    .del-btn:hover { background: #7f1d1d; color: #fff; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; margin: 6px 0; }
+    .node-card.role-Candidate { border-color: var(--candidate); background: #261f0b; }
+    .node-card.role-Dead { border-color: var(--dead); opacity: 0.78; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
     .b-Leader { background: rgba(34,197,94,0.2); color: #86efac; }
     .b-Follower { background: rgba(56,189,248,0.2); color: #7dd3fc; }
-    .b-Candidate { background: rgba(234,179,8,0.28); color: #fde047; }
+    .b-Candidate { background: rgba(234,179,8,0.25); color: #fde047; }
     .b-Dead { background: rgba(239,68,68,0.22); color: #fca5a5; }
-    .b-Iso { background: rgba(168,85,247,0.25); color: #d8b4fe; }
-    .events { max-height: 360px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
-    .ev { padding: 6px 8px; border-radius: 5px; background: var(--card); border-left: 3px solid var(--follower); }
-    .ev.err { border-left-color: var(--dead); color: #fecaca; }
-    .ev.ok { border-left-color: var(--leader); color: #bbf7d0; }
-    .ev.cand { border-left-color: var(--candidate); color: #fef08a; }
-    .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .b-Iso { background: rgba(168,85,247,0.25); color: #e9d5ff; }
+    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px; color: var(--muted); margin: 8px 0; }
+    .meta strong { color: var(--text); }
+    .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .strip { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 5px; max-height: 92px; overflow-y: auto; }
+    .log-pill { font-size: 11px; padding: 3px 6px; border-radius: 4px; font-family: ui-monospace, monospace; }
+    .c-ok { background: rgba(34,197,94,0.16); border: 1px solid rgba(34,197,94,0.45); color: #bbf7d0; }
+    .c-no { background: rgba(234,179,8,0.16); border: 1px dashed rgba(234,179,8,0.65); color: #fef08a; }
+    .events { max-height: 360px; overflow-y: auto; font-family: ui-monospace, monospace; font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .ev { background: var(--card); padding: 7px 9px; border-radius: 6px; border-left: 3px solid var(--accent); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+    code { background: var(--card); padding: 2px 5px; border-radius: 4px; font-family: ui-monospace, monospace; font-size: 12px; }
   </style>
 </head>
 <body>
   <div class="topbar">
-    <div>
-      <strong>RAFTLAB v2.6 PLAYGROUND</strong>
-      <div style="font-size:12px;color:var(--muted);">Strict Quorum • Visible Candidates • Partition Simulation • 3–5 Nodes</div>
+    <div class="brand-row">
+      <span class="brand">RAFTLAB 2.6 — CLOUD CLUSTER</span>
+      <span id="conn-pill" class="pill">Connecting to Cloud Gateway...</span>
+      <span class="pill live">Upstash Redis WAL + Snapshots</span>
     </div>
-    <div class="metrics">
-      <div class="metric"><span>Term</span><strong id="m-term">#1</strong></div>
-      <div class="metric"><span>Leader</span><strong id="m-leader">None</strong></div>
-      <div class="metric"><span>Reachable / Size</span><strong id="m-reach">5 / 5</strong></div>
-      <div class="metric"><span>Majority Req</span><strong id="m-maj">3 Votes</strong></div>
-    </div>
-    <div class="controls">
-      <label style="font-size:12px;color:var(--muted);">Nodes (3–5):
-        <select id="node-count-select" onchange="setNodeCount(Number(this.value))"></select>
-      </label>
-      <button class="primary" onclick="addNode()">+ Add Node</button>
-      <button class="warn" onclick="triggerSplitBrain()">⚡ Split-Brain Test</button>
-      <button onclick="healAll()">🟢 Heal & Reset</button>
+    <div class="brand-row">
+      <span id="quorum-pill" class="pill">Quorum: -</span>
+      <button onclick="setPresetGw('https://raft-gateway.onrender.com')">Render Cloud</button>
+      <button onclick="setPresetGw('http://localhost:5000')">Local Docker</button>
     </div>
   </div>
 
-  <div class="grid-main">
-    <div>
-      <div class="panel">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <strong>Cluster Mesh (<span id="mesh-count">5</span> Nodes)</strong>
-          <span style="font-size:12px;color:var(--muted);">Click card to select • Click × at top-right to remove (min 3)</span>
-        </div>
-        <div id="nodes-grid" class="nodes-grid"></div>
-      </div>
-
-      <div class="panel">
-        <strong>Selected Node [<span id="sel-id">A</span>] Control Panel</strong>
-        <div class="row">
-          <button class="danger" onclick="killSelected()">Kill</button>
-          <button class="primary" onclick="reviveSelected()">Revive</button>
-          <button class="warn" onclick="isolateSelected()">Isolate</button>
-          <button onclick="healSelected()">Heal</button>
-          <button class="warn" onclick="startElectionFromSelected()">Run Election (Show Candidate)</button>
-        </div>
-        <div id="sel-meta" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
-      </div>
-
-      <div class="panel">
-        <strong>Client Write Terminal</strong>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px;">
-          Writes commit only when reachable alive non-isolated nodes are greater than or equal to majority.
-        </div>
-        <div class="row">
-          <input id="kv-key" placeholder="Key (e.g. balance)" value="balance" />
-          <input id="kv-val" placeholder="Value (e.g. 500)" value="500" />
-          <button class="primary" onclick="sendWrite()">Send Write</button>
-        </div>
-        <div id="write-status" style="margin-top:10px;font-size:13px;"></div>
-        <div id="kv-view" style="margin-top:8px;font-size:12px;color:var(--muted);">State KV: {}</div>
-      </div>
+  <div class="nav">
+    <div class="tabs">
+      <button class="tab-btn active" data-view="lab" onclick="switchView('lab')">Live Cloud Cluster</button>
+      <button class="tab-btn" data-view="explorer" onclick="switchView('explorer')">Consolidated WAL & State</button>
+      <button class="tab-btn" data-view="history" onclick="switchView('history')">Run History</button>
+      <button class="tab-btn" data-view="arch" onclick="switchView('arch')">Cloud Architecture</button>
     </div>
-
-    <div class="panel">
-      <strong>Event Stream</strong>
-      <div id="events" class="events" style="margin-top:10px;"></div>
+    <div class="gw-box">
+      <input id="gw" type="text" style="width:270px;" value="https://raft-gateway.onrender.com" placeholder="Gateway URL" />
+      <button class="ok" onclick="connectGw()">Connect</button>
+      <button class="warn" onclick="splitBrain()">Split-Brain</button>
+      <button onclick="healAll()">Heal All</button>
+      <button class="danger" onclick="resetAll()">Reset Cluster</button>
     </div>
+  </div>
+
+  <div class="container">
+    <section id="view-lab">
+      <div class="stats-strip">
+        <div class="stat-card"><span>Current Term</span><strong id="s-term">0</strong></div>
+        <div class="stat-card"><span>Active Leader</span><strong id="s-leader">None</strong></div>
+        <div class="stat-card"><span>Quorum Needed</span><strong id="s-quorum">0</strong></div>
+        <div class="stat-card"><span>Reachable Nodes</span><strong id="s-reach">0 / 0</strong></div>
+        <div class="stat-card"><span>Max Commit Index</span><strong id="s-commit">0</strong></div>
+        <div class="stat-card"><span>Max Snapshot Index</span><strong id="s-snap">0</strong></div>
+      </div>
+
+      <div class="lab-grid">
+        <div>
+          <div class="panel">
+            <div class="panel-hdr">
+              <div>
+                <div class="panel-title">Distributed Cloud Microservice Nodes & Append-Only Log</div>
+                <div class="panel-sub">Live HTTP/RPC consensus across containerized nodes backed by Upstash Redis</div>
+              </div>
+              <button onclick="recordRunSnapshot('Manual Snapshot')">Save Run Snapshot</button>
+            </div>
+            <div id="nodes" class="nodes-grid"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">Client Write & Replication Terminal</div>
+            <div class="panel-sub" style="margin-bottom:8px;">Routes via API Gateway → Leader → Replicates to Followers → Commits on Majority → Persists to Upstash Redis</div>
+            <div class="row">
+              <input id="k" type="text" placeholder="Key (e.g. balance)" value="balance" />
+              <input id="v" type="text" placeholder="Value (e.g. 500)" value="500" />
+              <button class="ok" onclick="sendWrite()">Send Write</button>
+              <button class="primary" onclick="sendBurst(5)">Send 5 Writes</button>
+              <button class="warn" onclick="sendBurst(22)">Burst 22 (Trigger Compaction)</button>
+            </div>
+            <div id="w-res" style="margin-top:8px;font-size:13px;color:var(--muted);">Ready to send writes to cloud cluster.</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel">
+            <div class="panel-title">Live Cluster Event Stream</div>
+            <div id="evs" class="events" style="margin-top:8px;"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">Cluster Telemetry</div>
+            <div class="meta" style="margin-top:8px;">
+              <div>Elections Started: <strong id="m-el">0</strong></div>
+              <div>Avg Commit Latency: <strong id="m-lat">0 ms</strong></div>
+              <div>Saved Snapshots: <strong id="m-runs">0</strong></div>
+              <div>Persistence: <strong style="color:#86efac;">Upstash Redis</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-explorer" class="hidden">
+      <div class="panel">
+        <div class="panel-hdr">
+          <div>
+            <div class="panel-title">Consolidated Append-Only Log & Per-Node State Machine</div>
+            <div class="panel-sub">Real-time view of committed KV pairs, snapshot compaction index, and replicated WAL entries across nodes.</div>
+          </div>
+          <button onclick="poll()">Refresh Now</button>
+        </div>
+        <div id="explorer-content"></div>
+      </div>
+    </section>
+
+    <section id="view-history" class="hidden">
+      <div class="panel">
+        <div class="panel-hdr">
+          <div>
+            <div class="panel-title">Run & Fault-Injection History</div>
+            <div class="panel-sub">Captured cluster states across leader elections, node failures, partitions, and log compaction runs.</div>
+          </div>
+          <button class="ok" onclick="recordRunSnapshot('Checkpoint')">Capture Current State</button>
+        </div>
+        <div id="history-content"></div>
+      </div>
+    </section>
+
+    <section id="view-arch" class="hidden">
+      <div class="panel">
+        <div class="panel-title">Cloud Microservices & Storage Architecture</div>
+        <table style="margin-top:10px;">
+          <thead><tr><th>Layer / Microservice</th><th>Cloud Platform</th><th>Role & Responsibility</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Control Dashboard UI</strong></td><td>Vercel Edge CDN</td><td>Visualizes cluster state, triggers chaos engineering, and sends client writes.</td></tr>
+            <tr><td><strong>API Gateway (<code>raft-gateway</code>)</strong></td><td>Render Cloud Container</td><td>Health-checks nodes, discovers current Leader, routes client writes & admin RPCs.</td></tr>
+            <tr><td><strong>Raft Consensus Nodes (<code>N1..N5</code>)</strong></td><td>Render / Docker Containers</td><td>5 independent microservices running leader election, heartbeats, and log replication.</td></tr>
+            <tr><td><strong>Durable WAL & Snapshot Store</strong></td><td>Upstash Serverless Redis</td><td>Persists term, votedFor, append-only log, and compacted snapshots across restarts.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
   <script>
-    const ALL_IDS = ['A','B','C','D','E','F','G','H','I','J'];
-    let nodes = [];
-    let selectedId = 'A';
-    let term = 1;
-    let kvStore = {};
+    const DEFAULT_GW = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+      ? 'http://localhost:5000'
+      : 'https://raft-gateway.onrender.com';
+    document.getElementById('gw').value = localStorage.getItem('raft_gw') || DEFAULT_GW;
 
-    const selDropdown = document.getElementById('node-count-select');
-    for (let n = 3; n <= 5; n++) {
-      const opt = document.createElement('option');
-      opt.value = n;
-      opt.textContent = `${n} Nodes (Majority ${Math.floor(n/2)+1})`;
-      if (n === 5) opt.selected = true;
-      selDropdown.appendChild(opt);
-    }
+    let lastCluster = null;
+    let lastLeader = null;
+    let lastTerm = 0;
+    const snapshots = [];
 
-    function logEvent(msg, cls = '') {
-      const box = document.getElementById('events');
+    function gwUrl() { return document.getElementById('gw').value.trim().replace(/\/+$/, ''); }
+    function setPresetGw(url) { document.getElementById('gw').value = url; connectGw(); }
+    function connectGw() { localStorage.setItem('raft_gw', gwUrl()); logEv('Switched Gateway endpoint to ' + gwUrl()); poll(); }
+
+    function logEv(msg) {
+      const box = document.getElementById('evs');
       const div = document.createElement('div');
-      div.className = `ev ${cls}`;
-      const ts = new Date().toLocaleTimeString();
-      div.textContent = `[${ts}] ${msg}`;
+      div.className = 'ev';
+      div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
       box.prepend(div);
+      if (box.children.length > 60) box.lastChild.remove();
     }
 
-    function makeNode(id, role = 'Follower', commitIndex = 0) {
-      return { id, role, term, commitIndex, isAlive: true, isIsolated: false };
+    function switchView(name) {
+      ['lab', 'explorer', 'history', 'arch'].forEach(v => document.getElementById('view-' + v).classList.toggle('hidden', v !== name));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+      if (name === 'explorer') renderExplorer();
+      if (name === 'history') renderHistory();
     }
 
-    function initCluster(count = 5) {
-      const clamped = Math.max(3, Math.min(5, count));
-      term = 1;
-      kvStore = {};
-      nodes = ALL_IDS.slice(0, clamped).map((id, idx) =>
-        makeNode(id, idx === 0 ? 'Leader' : 'Follower', 0)
-      );
-      selectedId = nodes[0].id;
-      selDropdown.value = String(clamped);
-      logEvent(`Initialized ${clamped}-node cluster. Leader: Node ${nodes[0].id} (Term #${term}).`, 'ok');
-      render();
+    async function nodeAction(nodeId, action) {
+      try {
+        const r = await fetch(gwUrl() + '/admin/' + nodeId + '/' + action, { method: 'POST' });
+        const d = await r.json();
+        logEv('Admin [' + action.toUpperCase() + '] on ' + nodeId + ' -> ' + (r.ok ? 'OK' : d.error));
+        poll();
+      } catch (e) { logEv('Action failed: ' + e.message); }
     }
 
-    function setNodeCount(count) {
-      initCluster(count);
+    async function splitBrain() {
+      if (!lastCluster?.nodes?.length) return;
+      const half = Math.floor(lastCluster.nodes.length / 2);
+      for (let i = 0; i < half; i++) await nodeAction(lastCluster.nodes[i].id, 'isolate');
+      logEv('Split-Brain triggered: minority isolated from majority quorum.');
     }
 
-    function addNode() {
-      if (nodes.length >= 5) {
-        logEvent('Maximum cluster size is 5 nodes.', 'err');
-        return;
+    async function healAll() {
+      if (!lastCluster?.nodes?.length) return;
+      for (const n of lastCluster.nodes) {
+        if (!n.alive) await nodeAction(n.id, 'revive');
+        if (n.isolated) await nodeAction(n.id, 'heal');
       }
-      const nextId = ALL_IDS.find(id => !nodes.some(n => n.id === id));
-      if (!nextId) return;
-      nodes.push(makeNode(nextId, 'Follower', 0));
-      selDropdown.value = String(nodes.length);
-      logEvent(`Added Node ${nextId} and connected to cluster (${nodes.length} nodes).`, 'ok');
-      render();
+      logEv('Healed & revived all cluster nodes.');
     }
 
-    function removeNode(id, ev) {
-      ev.stopPropagation();
-      if (nodes.length <= 3) {
-        logEvent('Minimum cluster size is 3 nodes. Cannot remove more nodes.', 'err');
-        return;
-      }
-      const removed = nodes.find(n => n.id === id);
-      nodes = nodes.filter(n => n.id !== id);
-      if (selectedId === id) selectedId = nodes[0].id;
-      selDropdown.value = String(nodes.length);
-      logEvent(`Removed Node ${id} from cluster (${nodes.length} nodes remaining).`, 'warn');
-      if (removed && removed.role === 'Leader') {
-        runElectionCycle();
-      } else {
-        render();
-      }
+    async function resetAll() {
+      if (!lastCluster?.nodes?.length) return;
+      for (const n of lastCluster.nodes) await nodeAction(n.id, 'reset');
+      logEv('Cluster state & Upstash WAL cleared.');
     }
 
-    function getReachableNodes() {
-      return nodes.filter(n => n.isAlive && !n.isIsolated);
-    }
-
-    function getMajority() {
-      return Math.floor(nodes.length / 2) + 1;
-    }
-
-    function runElectionCycle() {
-      const eligible = getReachableNodes();
-      const majority = getMajority();
-      if (eligible.length === 0) {
-        logEvent('No reachable nodes available to hold an election.', 'err');
-        render();
-        return;
-      }
-      term += 1;
-      nodes.forEach(n => {
-        n.term = term;
-        if (n.isAlive && !n.isIsolated) {
-          n.role = 'Candidate';
-        }
-      });
-      logEvent(`Term #${term} election started: eligible nodes entered CANDIDATE state.`, 'cand');
-      render();
-
-      setTimeout(() => {
-        const currentEligible = getReachableNodes();
-        if (currentEligible.length >= majority) {
-          const winner = currentEligible[0];
-          currentEligible.forEach((n, i) => {
-            n.role = i === 0 ? 'Leader' : 'Follower';
-            n.term = term;
-          });
-          logEvent(`Node ${winner.id} won Term #${term} election with ${currentEligible.length}/${nodes.length} votes (majority ${majority}).`, 'ok');
+    async function sendWrite(customK, customV) {
+      const k = customK ?? document.getElementById('k').value.trim();
+      const v = customV ?? document.getElementById('v').value.trim();
+      const resEl = document.getElementById('w-res');
+      try {
+        const r = await fetch(gwUrl() + '/write', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: k, value: v, requestId: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) })
+        });
+        const d = await r.json();
+        if (r.ok) {
+          resEl.style.color = '#86efac';
+          resEl.textContent = 'Committed #' + d.index + ' [Term ' + d.term + ']: ' + k + ' = ' + v + ' (' + (d.latencyMs || 0) + ' ms) -> Saved to Upstash Redis';
+          logEv('Committed #' + d.index + ' (' + k + '=' + v + ')');
         } else {
-          currentEligible.forEach(n => {
-            n.role = 'Follower';
-            n.term = term;
-          });
-          logEvent(`Election in Term #${term} had no majority (${currentEligible.length}/${nodes.length} reachable, need ${majority}). Remaining Followers.`, 'err');
+          resEl.style.color = '#fca5a5';
+          resEl.textContent = 'Rejected (' + r.status + '): ' + (d.error || d.reason || 'Quorum unavailable');
+          logEv('Write rejected: ' + (d.error || d.reason));
         }
-        render();
-      }, 900);
+        poll();
+      } catch (e) { resEl.style.color = '#fca5a5'; resEl.textContent = 'Gateway unreachable: ' + e.message; }
     }
 
-    function killSelected() {
-      const n = nodes.find(x => x.id === selectedId);
-      if (!n) return;
-      const wasLeader = n.role === 'Leader';
-      n.isAlive = false;
-      n.isIsolated = false;
-      n.role = 'Dead';
-      logEvent(`Node ${n.id} killed.`, 'err');
-      if (wasLeader) {
-        runElectionCycle();
-      } else {
-        render();
-      }
+    async function sendBurst(count) {
+      for (let i = 1; i <= count; i++) await sendWrite('item_' + i, 'val_' + Math.floor(Math.random() * 1000));
     }
 
-    function reviveSelected() {
-      const n = nodes.find(x => x.id === selectedId);
-      if (!n) return;
-      n.isAlive = true;
-      n.isIsolated = false;
-      n.role = 'Follower';
-      n.term = term;
-      logEvent(`Node ${n.id} revived as Follower in Term #${term}.`, 'ok');
-      render();
-    }
-
-    function isolateSelected() {
-      const n = nodes.find(x => x.id === selectedId);
-      if (!n || !n.isAlive) return;
-      const wasLeader = n.role === 'Leader';
-      n.isIsolated = true;
-      n.role = 'Follower';
-      logEvent(`Node ${n.id} isolated from cluster network.`, 'cand');
-      if (wasLeader) {
-        runElectionCycle();
-      } else {
-        render();
-      }
-    }
-
-    function healSelected() {
-      const n = nodes.find(x => x.id === selectedId);
-      if (!n || !n.isAlive) return;
-      n.isIsolated = false;
-      n.term = term;
-      logEvent(`Node ${n.id} network connection healed.`, 'ok');
-      render();
-    }
-
-    function startElectionFromSelected() {
-      const n = nodes.find(x => x.id === selectedId);
-      if (!n || !n.isAlive || n.isIsolated) {
-        logEvent('Selected node must be alive and not isolated to run election.', 'err');
-        return;
-      }
-      term += 1;
-      n.role = 'Candidate';
-      n.term = term;
-      logEvent(`Node ${n.id} transitioned to CANDIDATE for Term #${term}.`, 'cand');
-      render();
-      setTimeout(() => {
-        const reachable = getReachableNodes();
-        const maj = getMajority();
-        if (reachable.length >= maj && n.isAlive && !n.isIsolated) {
-          reachable.forEach(peer => {
-            peer.role = peer.id === n.id ? 'Leader' : 'Follower';
-            peer.term = term;
-          });
-          logEvent(`Node ${n.id} elected LEADER for Term #${term} (${reachable.length}/${nodes.length} reachable).`, 'ok');
-        } else {
-          n.role = 'Follower';
-          logEvent(`Node ${n.id} stepped back to Follower: insufficient majority (${reachable.length}/${nodes.length}, need ${maj}).`, 'err');
-        }
-        render();
-      }, 900);
-    }
-
-    function triggerSplitBrain() {
-      if (nodes.length < 4) {
-        logEvent('Need at least 4 nodes for a clean split-brain partition.', 'err');
-        return;
-      }
-      const splitIdx = Math.floor(nodes.length / 2);
-      const minority = nodes.slice(0, splitIdx);
-      const majorityGroup = nodes.slice(splitIdx);
-      term += 1;
-      minority.forEach(n => {
-        if (n.isAlive) {
-          n.isIsolated = true;
-          n.role = 'Follower';
-          n.term = term;
-        }
+    function recordRunSnapshot(label) {
+      if (!lastCluster) return;
+      snapshots.unshift({
+        time: new Date().toLocaleTimeString(), label, term: lastCluster.term,
+        leader: lastCluster.leaderId || 'None',
+        reachable: lastCluster.reachableCount + '/' + (lastCluster.totalNodes || lastCluster.nodes.length)
       });
-      majorityGroup.forEach((n, idx) => {
-        if (n.isAlive) {
-          n.isIsolated = false;
-          n.role = idx === 0 ? 'Leader' : 'Follower';
-          n.term = term;
-        }
-      });
-      const minIds = minority.map(x => x.id).join(',');
-      const majIds = majorityGroup.map(x => x.id).join(',');
-      logEvent(`Split-Brain active in Term #${term}: Minority [${minIds}] isolated vs Majority [${majIds}] (Leader: ${majorityGroup[0].id}).`, 'cand');
-      render();
+      document.getElementById('m-runs').textContent = snapshots.length;
+      logEv('Saved run snapshot: ' + label);
     }
 
-    function healAll() {
-      nodes.forEach(n => {
-        n.isAlive = true;
-        n.isIsolated = false;
-        n.role = 'Follower';
-        n.term = term;
-      });
-      const maj = getMajority();
-      if (nodes.length >= maj) {
-        nodes[0].role = 'Leader';
-        logEvent(`Cluster healed. Node ${nodes[0].id} is active Leader in Term #${term}.`, 'ok');
-      }
-      render();
-    }
+    function renderCluster(data) {
+      lastCluster = data;
+      const nodes = data.nodes || [];
+      const total = data.totalNodes || nodes.length;
+      const maxCommit = nodes.reduce((m, n) => Math.max(m, n.commitIndex || 0), 0);
+      const maxSnap = nodes.reduce((m, n) => Math.max(m, n.snapshotIndex || 0), 0);
+      const totalElections = nodes.reduce((m, n) => m + (n.metrics?.electionsStarted || 0), 0);
+      const lats = nodes.map(n => n.metrics?.avgCommitLatencyMs || 0).filter(x => x > 0);
+      const avgLat = lats.length ? Math.round(lats.reduce((a, b) => a + b, 0) / lats.length) : 0;
 
-    function sendWrite() {
-      const key = document.getElementById('kv-key').value.trim() || 'key';
-      const value = document.getElementById('kv-val').value.trim() || 'value';
-      const statusEl = document.getElementById('write-status');
-      const leader = nodes.find(n => n.role === 'Leader' && n.isAlive && !n.isIsolated);
-      const reachable = getReachableNodes();
-      const maj = getMajority();
+      document.getElementById('s-term').textContent = '#' + data.term;
+      document.getElementById('s-leader').textContent = data.leaderId || 'None';
+      document.getElementById('s-quorum').textContent = data.majority + ' / ' + total;
+      document.getElementById('s-reach').textContent = data.reachableCount + ' / ' + total;
+      document.getElementById('s-commit').textContent = '#' + maxCommit;
+      document.getElementById('s-snap').textContent = '#' + maxSnap;
+      document.getElementById('quorum-pill').textContent = 'Quorum: ' + data.majority + ' of ' + total;
+      document.getElementById('m-el').textContent = totalElections;
+      document.getElementById('m-lat').textContent = avgLat + ' ms';
 
-      if (!leader) {
-        statusEl.style.color = '#fca5a5';
-        statusEl.textContent = `Rejected: No reachable active Leader in majority partition (${reachable.length}/${nodes.length} reachable, need ${maj}).`;
-        logEvent(`Write [${key} = ${value}] rejected: no active reachable Leader.`, 'err');
-        return;
+      if (data.leaderId !== lastLeader || data.term !== lastTerm) {
+        logEv('Cluster state: Term #' + data.term + ' | Leader: ' + (data.leaderId || 'None'));
+        lastLeader = data.leaderId;
+        lastTerm = data.term;
       }
 
-      if (reachable.length < maj) {
-        statusEl.style.color = '#fca5a5';
-        statusEl.textContent = `Quorum Lost: Only ${reachable.length}/${nodes.length} nodes reachable (need ${maj}). Write NOT committed.`;
-        logEvent(`Write [${key} = ${value}] blocked on Leader ${leader.id}: quorum not met (${reachable.length}/${maj}).`, 'err');
-        return;
+      const grid = document.getElementById('nodes');
+      grid.innerHTML = nodes.map(n => {
+        const role = !n.alive ? 'Dead' : (n.role || 'Follower');
+        const entries = (n.log || []).slice(-8).map(e =>
+          '<span class="log-pill ' + (e.committed ? 'c-ok' : 'c-no') + '">#' + e.index + ' ' + e.key + '=' + e.value + '</span>'
+        ).join('');
+        return '<div class="node-card role-' + role + '">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<strong>' + n.id + '</strong>' +
+            '<div><span class="badge b-' + role + '">' + role + '</span>' + (n.isolated ? ' <span class="badge b-Iso">Isolated</span>' : '') + '</div>' +
+          '</div>' +
+          '<div class="meta">' +
+            '<div>Term: <strong>#' + (n.term || 0) + '</strong></div>' +
+            '<div>Commit: <strong>#' + (n.commitIndex || 0) + '</strong></div>' +
+            '<div>Snapshot: <strong>#' + (n.snapshotIndex || 0) + '</strong></div>' +
+            '<div>Log Tail: <strong>' + (n.log?.length || 0) + '</strong></div>' +
+          '</div>' +
+          '<div class="row">' +
+            '<button class="danger" onclick="nodeAction(\'' + n.id + '\',\'kill\')">Kill</button>' +
+            '<button class="ok" onclick="nodeAction(\'' + n.id + '\',\'revive\')">Revive</button>' +
+            '<button class="warn" onclick="nodeAction(\'' + n.id + '\',\'isolate\')">Isolate</button>' +
+            '<button onclick="nodeAction(\'' + n.id + '\',\'heal\')">Heal</button>' +
+          '</div>' +
+          '<div class="strip">' + (entries || '<span style="font-size:11px;color:var(--muted);">No uncommitted/tail entries</span>') + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function renderExplorer() {
+      if (!lastCluster) return;
+      const el = document.getElementById('explorer-content');
+      el.innerHTML = '<table><thead><tr><th>Node</th><th>Role</th><th>Term</th><th>Commit Index</th><th>Snapshot Index</th><th>Committed KV State</th></tr></thead><tbody>' +
+        lastCluster.nodes.map(n => '<tr><td><strong>' + n.id + '</strong></td><td>' + n.role + '</td><td>#' + (n.term || 0) + '</td><td>#' + (n.commitIndex || 0) + '</td><td>#' + (n.snapshotIndex || 0) + '</td><td><code>' + JSON.stringify(n.kv || {}) + '</code></td></tr>').join('') +
+        '</tbody></table>';
+    }
+
+    function renderHistory() {
+      const el = document.getElementById('history-content');
+      if (!snapshots.length) { el.innerHTML = '<p style="color:var(--muted);">No snapshots captured yet.</p>'; return; }
+      el.innerHTML = '<table><thead><tr><th>Time</th><th>Label</th><th>Term</th><th>Leader</th><th>Reachable</th></tr></thead><tbody>' +
+        snapshots.map(s => '<tr><td>' + s.time + '</td><td>' + s.label + '</td><td>#' + s.term + '</td><td>' + s.leader + '</td><td>' + s.reachable + '</td></tr>').join('') +
+        '</tbody></table>';
+    }
+
+    async function poll() {
+      const pill = document.getElementById('conn-pill');
+      try {
+        const r = await fetch(gwUrl() + '/cluster');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        pill.className = 'pill ok';
+        pill.textContent = 'Connected: ' + gwUrl();
+        renderCluster(data);
+        if (!document.getElementById('view-explorer').classList.contains('hidden')) renderExplorer();
+      } catch (e) {
+        pill.className = 'pill err';
+        pill.textContent = 'Disconnected (' + e.message + ')';
       }
-
-      kvStore[key] = value;
-      reachable.forEach(n => {
-        n.commitIndex += 1;
-      });
-      statusEl.style.color = '#86efac';
-      statusEl.textContent = `Committed [${key} = ${value}] via Leader ${leader.id} (${reachable.length}/${nodes.length} reachable, majority ${maj}).`;
-      logEvent(`Write [${key} = ${value}] committed by Leader ${leader.id} (${reachable.length}/${nodes.length} nodes).`, 'ok');
-      render();
     }
 
-    function render() {
-      const reachable = getReachableNodes();
-      const maj = getMajority();
-      const leader = nodes.find(n => n.role === 'Leader' && n.isAlive && !n.isIsolated);
-
-      document.getElementById('m-term').textContent = `#${term}`;
-      document.getElementById('m-leader').textContent = leader ? leader.id : 'None';
-      document.getElementById('m-reach').textContent = `${reachable.length} / ${nodes.length}`;
-      document.getElementById('m-maj').textContent = `${maj} Votes`;
-      document.getElementById('mesh-count').textContent = String(nodes.length);
-
-      const grid = document.getElementById('nodes-grid');
-      grid.innerHTML = '';
-      nodes.forEach(n => {
-        const card = document.createElement('div');
-        card.className = `node-card role-${n.role} ${n.isIsolated ? 'isolated' : ''} ${n.id === selectedId ? 'selected' : ''}`;
-        card.onclick = () => { selectedId = n.id; render(); };
-
-        const delBtn = document.createElement('button');
-        delBtn.className = 'del-btn';
-        delBtn.title = 'Remove node';
-        delBtn.textContent = '×';
-        delBtn.onclick = (e) => removeNode(n.id, e);
-
-        card.innerHTML = `
-          <div><strong>Node ${n.id}</strong></div>
-          <div class="badge b-${n.role}">${n.role}</div>
-          ${n.isIsolated ? '<div class="badge b-Iso">Isolated</div>' : ''}
-          <div style="font-size:12px;color:var(--muted);">Term: ${n.term} • Commit: #${n.commitIndex}</div>
-        `;
-        card.appendChild(delBtn);
-        grid.appendChild(card);
-      });
-
-      const sel = nodes.find(x => x.id === selectedId) || nodes[0];
-      selectedId = sel.id;
-      document.getElementById('sel-id').textContent = sel.id;
-      document.getElementById('sel-meta').textContent =
-        `Role: ${sel.role} | Alive: ${sel.isAlive} | Isolated: ${sel.isIsolated} | Term: ${sel.term} | Commit Index: #${sel.commitIndex}`;
-      document.getElementById('kv-view').textContent = `State KV: ${JSON.stringify(kvStore)}`;
-    }
-
-    initCluster(5);
+    setInterval(poll, 1200);
+    poll();
   </script>
 </body>
 </html>
-

@@ -3,27 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RAFTLAB 2.6 — Distributed Consensus & WAL Lab</title>
+  <title>RAFTLAB 2.6 — Cloud Distributed Consensus & WAL Engine</title>
   <style>
     :root {
-      --bg: #070b14;
-      --panel: #0e1526;
-      --panel-2: #131d33;
-      --card: #16223d;
-      --border: #24355c;
-      --text: #eef3ff;
-      --muted: #93a6cf;
-      --accent: #38bdf8;
-      --leader: #22c55e;
-      --follower: #38bdf8;
-      --candidate: #eab308;
-      --dead: #ef4444;
-      --iso: #a855f7;
+      --bg: #070b14; --panel: #0e1526; --card: #16223d; --border: #24355c;
+      --text: #eef3ff; --muted: #93a6cf; --accent: #38bdf8;
+      --leader: #22c55e; --follower: #38bdf8; --candidate: #eab308;
+      --dead: #ef4444; --iso: #a855f7;
     }
     * { box-sizing: border-box; font-family: Inter, system-ui, -apple-system, sans-serif; }
     body { margin: 0; background: var(--bg); color: var(--text); }
-
-    /* Top Status Bar */
     .topbar {
       display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;
       padding: 10px 18px; background: #0a101d; border-bottom: 1px solid var(--border); font-size: 12px;
@@ -32,9 +21,8 @@
     .brand { font-weight: 800; letter-spacing: 0.06em; font-size: 14px; color: #fff; }
     .pill { padding: 3px 9px; border-radius: 999px; font-weight: 600; border: 1px solid var(--border); background: var(--panel); color: var(--muted); }
     .pill.ok { color: #86efac; border-color: rgba(34,197,94,0.45); background: rgba(34,197,94,0.12); }
+    .pill.err { color: #fca5a5; border-color: rgba(239,68,68,0.45); background: rgba(239,68,68,0.12); }
     .pill.live { color: #7dd3fc; border-color: rgba(56,189,248,0.45); background: rgba(56,189,248,0.12); }
-
-    /* Main Nav */
     .nav {
       display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;
       padding: 10px 18px; background: var(--panel); border-bottom: 1px solid var(--border);
@@ -47,8 +35,7 @@
     .tab-btn:hover { color: var(--text); background: var(--card); }
     .tab-btn.active { color: #fff; background: var(--card); border-color: var(--accent); }
     .gw-box { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-
-    input, button, select {
+    input, button {
       background: var(--card); color: var(--text); border: 1px solid var(--border);
       border-radius: 6px; padding: 7px 11px; font-size: 13px;
     }
@@ -58,84 +45,39 @@
     button.ok { background: #143624; border-color: var(--leader); color: #dcfce7; }
     button.warn { background: #382a0c; border-color: var(--candidate); color: #fef9c3; }
     button.danger { background: #3a141c; border-color: var(--dead); color: #fee2e2; }
-
     .container { max-width: 1380px; margin: 0 auto; padding: 18px; }
     .hidden { display: none !important; }
-
-    /* Stats & Grid */
-    .stats-strip {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px;
-    }
-    .stat-card {
-      background: var(--panel); border: 1px solid var(--border); border-radius: 9px; padding: 12px 14px;
-    }
+    .stats-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat-card { background: var(--panel); border: 1px solid var(--border); border-radius: 9px; padding: 12px 14px; }
     .stat-card span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .stat-card strong { font-size: 18px; margin-top: 4px; display: block; }
-
     .lab-grid { display: grid; grid-template-columns: 2.25fr 1fr; gap: 16px; }
     @media (max-width: 1040px) { .lab-grid { grid-template-columns: 1fr; } }
-
-    .panel {
-      background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 15px; margin-bottom: 16px;
-    }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 15px; margin-bottom: 16px; }
     .panel-hdr { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
     .panel-title { font-size: 14px; font-weight: 700; }
     .panel-sub { font-size: 12px; color: var(--muted); }
-
     .nodes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 12px; }
     .node-card { background: var(--card); border: 2px solid var(--border); border-radius: 9px; padding: 12px; }
     .node-card.role-Leader { border-color: var(--leader); }
     .node-card.role-Follower { border-color: var(--follower); }
     .node-card.role-Candidate { border-color: var(--candidate); background: #261f0b; }
     .node-card.role-Dead { border-color: var(--dead); opacity: 0.78; }
-
     .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
     .b-Leader { background: rgba(34,197,94,0.2); color: #86efac; }
     .b-Follower { background: rgba(56,189,248,0.2); color: #7dd3fc; }
     .b-Candidate { background: rgba(234,179,8,0.25); color: #fde047; }
     .b-Dead { background: rgba(239,68,68,0.22); color: #fca5a5; }
     .b-Iso { background: rgba(168,85,247,0.25); color: #e9d5ff; }
-
     .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px; color: var(--muted); margin: 8px 0; }
     .meta strong { color: var(--text); }
     .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .strip {
-      margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border);
-      display: flex; flex-wrap: wrap; gap: 5px; max-height: 92px; overflow-y: auto;
-    }
+    .strip { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 5px; max-height: 92px; overflow-y: auto; }
     .log-pill { font-size: 11px; padding: 3px 6px; border-radius: 4px; font-family: ui-monospace, monospace; }
     .c-ok { background: rgba(34,197,94,0.16); border: 1px solid rgba(34,197,94,0.45); color: #bbf7d0; }
     .c-no { background: rgba(234,179,8,0.16); border: 1px dashed rgba(234,179,8,0.65); color: #fef08a; }
-
     .events { max-height: 360px; overflow-y: auto; font-family: ui-monospace, monospace; font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
     .ev { background: var(--card); padding: 7px 9px; border-radius: 6px; border-left: 3px solid var(--accent); }
-
-    /* Learning Center */
-    .lc-hero { margin-bottom: 14px; }
-    .lc-hero h1 { margin: 0 0 6px; font-size: 22px; }
-    .lc-hero p { margin: 0; color: var(--muted); font-size: 14px; }
-    .subtabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-    .subtab {
-      padding: 6px 12px; border-radius: 7px; border: 1px solid var(--border);
-      background: var(--panel); color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer;
-    }
-    .subtab.active { background: var(--card); color: #fff; border-color: var(--accent); }
-
-    .exp-card {
-      background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
-      padding: 18px; margin-bottom: 16px;
-    }
-    .exp-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .exp-title { font-size: 16px; font-weight: 700; margin: 0; }
-    .exp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 12px; }
-    .exp-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 13px; }
-    .exp-box h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); }
-    .exp-box ul, .exp-box ol { margin: 0; padding-left: 18px; line-height: 1.55; }
-    .reflect {
-      margin-top: 12px; padding: 11px 14px; border-radius: 8px;
-      background: rgba(56,189,248,0.08); border-left: 3px solid var(--accent); font-size: 13px; color: #dbeafe;
-    }
-
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
     th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
@@ -145,35 +87,34 @@
 <body>
   <div class="topbar">
     <div class="brand-row">
-      <span class="brand">RAFTLAB 2.6</span>
-      <span id="active-preset-pill" class="pill">No experiment preset active</span>
-      <span id="conn-pill" class="pill">Connecting...</span>
+      <span class="brand">RAFTLAB 2.6 — CLOUD CLUSTER</span>
+      <span id="conn-pill" class="pill">Connecting to Cloud Gateway...</span>
+      <span class="pill live">Upstash Redis WAL + Snapshots</span>
     </div>
     <div class="brand-row">
-      <span class="pill live">WAL + Snapshot Ready</span>
       <span id="quorum-pill" class="pill">Quorum: -</span>
+      <button onclick="setPresetGw('https://raft-gateway.onrender.com')">Render Cloud</button>
+      <button onclick="setPresetGw('http://localhost:5000')">Local Docker</button>
     </div>
   </div>
 
   <div class="nav">
     <div class="tabs">
-      <button class="tab-btn active" data-view="lab" onclick="switchView('lab')">Live Lab</button>
-      <button class="tab-btn" data-view="explorer" onclick="switchView('explorer')">WAL & Log Explorer</button>
+      <button class="tab-btn active" data-view="lab" onclick="switchView('lab')">Live Cloud Cluster</button>
+      <button class="tab-btn" data-view="explorer" onclick="switchView('explorer')">Consolidated WAL & State</button>
       <button class="tab-btn" data-view="history" onclick="switchView('history')">Run History</button>
-      <button class="tab-btn" data-view="compare" onclick="switchView('compare')">Compare</button>
-      <button class="tab-btn" data-view="learn" onclick="switchView('learn')">Learning Center</button>
+      <button class="tab-btn" data-view="arch" onclick="switchView('arch')">Cloud Architecture</button>
     </div>
     <div class="gw-box">
-      <input id="gw" type="text" style="width:230px;" value="" placeholder="Gateway URL" />
+      <input id="gw" type="text" style="width:270px;" value="https://raft-gateway.onrender.com" placeholder="Gateway URL" />
       <button class="ok" onclick="connectGw()">Connect</button>
       <button class="warn" onclick="splitBrain()">Split-Brain</button>
       <button onclick="healAll()">Heal All</button>
-      <button class="danger" onclick="resetAll()">Reset</button>
+      <button class="danger" onclick="resetAll()">Reset Cluster</button>
     </div>
   </div>
 
   <div class="container">
-    <!-- VIEW 1: LIVE LAB -->
     <section id="view-lab">
       <div class="stats-strip">
         <div class="stat-card"><span>Current Term</span><strong id="s-term">0</strong></div>
@@ -189,8 +130,8 @@
           <div class="panel">
             <div class="panel-hdr">
               <div>
-                <div class="panel-title">Raft Cluster Nodes & Append-Only Log Window</div>
-                <div class="panel-sub">Green = Leader • Sky = Follower • Yellow = Candidate • Red = Dead • Purple = Isolated</div>
+                <div class="panel-title">Distributed Cloud Microservice Nodes & Append-Only Log</div>
+                <div class="panel-sub">Live HTTP/RPC consensus across containerized nodes backed by Upstash Redis</div>
               </div>
               <button onclick="recordRunSnapshot('Manual Snapshot')">Save Run Snapshot</button>
             </div>
@@ -198,45 +139,44 @@
           </div>
 
           <div class="panel">
-            <div class="panel-title">Client Write & Batch Load Generator</div>
-            <div class="panel-sub" style="margin-bottom:8px;">Writes route through the Gateway to the active Leader, replicate to peers, and commit on majority quorum.</div>
+            <div class="panel-title">Client Write & Replication Terminal</div>
+            <div class="panel-sub" style="margin-bottom:8px;">Routes via API Gateway → Leader → Replicates to Followers → Commits on Majority → Persists to Upstash Redis</div>
             <div class="row">
-              <input id="k" type="text" placeholder="Key" value="balance" />
-              <input id="v" type="text" placeholder="Value" value="100" />
+              <input id="k" type="text" placeholder="Key (e.g. balance)" value="balance" />
+              <input id="v" type="text" placeholder="Value (e.g. 500)" value="500" />
               <button class="ok" onclick="sendWrite()">Send Write</button>
               <button class="primary" onclick="sendBurst(5)">Send 5 Writes</button>
-              <button class="warn" onclick="sendBurst(22)">Burst 22 (Test Compaction)</button>
+              <button class="warn" onclick="sendBurst(22)">Burst 22 (Trigger Compaction)</button>
             </div>
-            <div id="w-res" style="margin-top:8px;font-size:13px;color:var(--muted);">No write sent yet.</div>
+            <div id="w-res" style="margin-top:8px;font-size:13px;color:var(--muted);">Ready to send writes to cloud cluster.</div>
           </div>
         </div>
 
         <div>
           <div class="panel">
-            <div class="panel-title">Live Cluster Event Log (SSE)</div>
+            <div class="panel-title">Live Cluster Event Stream</div>
             <div id="evs" class="events" style="margin-top:8px;"></div>
           </div>
 
           <div class="panel">
             <div class="panel-title">Cluster Telemetry</div>
             <div class="meta" style="margin-top:8px;">
-              <div>Elections Observed: <strong id="m-el">0</strong></div>
+              <div>Elections Started: <strong id="m-el">0</strong></div>
               <div>Avg Commit Latency: <strong id="m-lat">0 ms</strong></div>
-              <div>Last Leader Change: <strong id="m-chg">Never</strong></div>
-              <div>Saved Run Snapshots: <strong id="m-runs">0</strong></div>
+              <div>Saved Snapshots: <strong id="m-runs">0</strong></div>
+              <div>Persistence: <strong style="color:#86efac;">Upstash Redis</strong></div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- VIEW 2: WAL & LOG EXPLORER -->
     <section id="view-explorer" class="hidden">
       <div class="panel">
         <div class="panel-hdr">
           <div>
-            <div class="panel-title">WAL & State Machine Explorer</div>
-            <div class="panel-sub">Inspect per-node committed KV state, compacted snapshot index, and active log tail (compacts every 20 committed entries).</div>
+            <div class="panel-title">Consolidated Append-Only Log & Per-Node State Machine</div>
+            <div class="panel-sub">Real-time view of committed KV pairs, snapshot compaction index, and replicated WAL entries across nodes.</div>
           </div>
           <button onclick="poll()">Refresh Now</button>
         </div>
@@ -244,13 +184,12 @@
       </div>
     </section>
 
-    <!-- VIEW 3: RUN HISTORY -->
     <section id="view-history" class="hidden">
       <div class="panel">
         <div class="panel-hdr">
           <div>
             <div class="panel-title">Run & Fault-Injection History</div>
-            <div class="panel-sub">Captured cluster snapshots across elections, partitions, kills, revivals, and log compaction runs.</div>
+            <div class="panel-sub">Captured cluster states across leader elections, node failures, partitions, and log compaction runs.</div>
           </div>
           <button class="ok" onclick="recordRunSnapshot('Checkpoint')">Capture Current State</button>
         </div>
@@ -258,576 +197,211 @@
       </div>
     </section>
 
-    <!-- VIEW 4: COMPARE -->
-    <section id="view-compare" class="hidden">
+    <section id="view-arch" class="hidden">
       <div class="panel">
-        <div class="panel-title">Compare Two Cluster Snapshots</div>
-        <div class="panel-sub" style="margin-bottom:10px;">Compare term progression, commit index growth, snapshot compaction, and reachable quorum across runs.</div>
-        <div class="row" style="margin-bottom:12px;">
-          <select id="cmp-a"></select>
-          <select id="cmp-b"></select>
-          <button class="primary" onclick="renderCompare()">Compare</button>
-        </div>
-        <div id="compare-content"></div>
-      </div>
-    </section>
-
-    <!-- VIEW 5: LEARNING CENTER -->
-    <section id="view-learn" class="hidden">
-      <div class="lc-hero">
-        <h1>Learning Center</h1>
-        <p>Concepts, guided experiments, metric definitions, and architecture trade-offs for the Raft consensus &amp; WAL log engine.</p>
-      </div>
-
-      <div class="subtabs">
-        <button class="subtab active" data-sub="experiments" onclick="switchSubtab('experiments')">Guided Experiments</button>
-        <button class="subtab" data-sub="pipeline" onclick="switchSubtab('pipeline')">Consensus Pipeline</button>
-        <button class="subtab" data-sub="metrics" onclick="switchSubtab('metrics')">Metrics</button>
-        <button class="subtab" data-sub="glossary" onclick="switchSubtab('glossary')">Glossary</button>
-        <button class="subtab" data-sub="architecture" onclick="switchSubtab('architecture')">Architecture</button>
-      </div>
-
-      <div id="sub-experiments"></div>
-
-      <div id="sub-pipeline" class="hidden panel">
-        <div class="panel-title">Raft Write &amp; Replication Pipeline</div>
-        <ol style="line-height:1.7;color:var(--muted);font-size:13px;">
-          <li><strong style="color:var(--text);">Client Write -&gt; Gateway:</strong> <code>POST /write</code> discovers the reachable Leader and forwards the request with an idempotent <code>requestId</code>.</li>
-          <li><strong style="color:var(--text);">Leader WAL Append:</strong> Leader assigns the next log <code>index</code> in <code>currentTerm</code> and persists WAL/state before replicating.</li>
-          <li><strong style="color:var(--text);">Parallel AppendEntries RPCs:</strong> Leader sends entries to peers; followers check log continuity (<code>prevLogIndex</code> &amp; <code>prevLogTerm</code>) and append.</li>
-          <li><strong style="color:var(--text);">Majority Quorum Commit:</strong> Once <code>ackCount &gt;= majority</code> for an entry in the current term, <code>commitIndex</code> advances and entries apply to state.</li>
-          <li><strong style="color:var(--text);">Snapshot Compaction:</strong> At 20 committed entries, state folds into a snapshot (<code>lastIncludedIndex</code>) and older log entries are truncated.</li>
-        </ol>
-      </div>
-
-      <div id="sub-metrics" class="hidden panel">
-        <div class="panel-title">Key Consensus &amp; Storage Metrics</div>
-        <table>
-          <thead><tr><th>Metric</th><th>Meaning</th><th>Operational Signal</th></tr></thead>
+        <div class="panel-title">Cloud Microservices & Storage Architecture</div>
+        <table style="margin-top:10px;">
+          <thead><tr><th>Layer / Microservice</th><th>Cloud Platform</th><th>Role & Responsibility</th></tr></thead>
           <tbody>
-            <tr><td><code>currentTerm</code></td><td>Logical monotonic epoch counter</td><td>Increments on elections or higher-term RPC discovery</td></tr>
-            <tr><td><code>commitIndex</code></td><td>Highest log index known to be committed on a majority</td><td>Safe to expose to clients and fold into state</td></tr>
-            <tr><td><code>snapshotIndex</code></td><td>Last log index compacted into snapshot state</td><td>Advances every 20 committed entries to bound memory/WAL size</td></tr>
-            <tr><td><code>reachableCount / clusterSize</code></td><td>Live, non-isolated nodes in cluster</td><td>Must be <code>&gt;= majority</code> for new writes to commit</td></tr>
-            <tr><td><code>avgCommitLatencyMs</code></td><td>Round-trip time from leader write append to quorum commit</td><td>Spikes when peers are slow, dead, or partitioned</td></tr>
+            <tr><td><strong>Control Dashboard UI</strong></td><td>Vercel Edge CDN</td><td>Visualizes cluster state, triggers chaos engineering, and sends client writes.</td></tr>
+            <tr><td><strong>API Gateway (<code>raft-gateway</code>)</strong></td><td>Render Cloud Container</td><td>Health-checks nodes, discovers current Leader, routes client writes & admin RPCs.</td></tr>
+            <tr><td><strong>Raft Consensus Nodes (<code>N1..N5</code>)</strong></td><td>Render / Docker Containers</td><td>5 independent microservices running leader election, heartbeats, and log replication.</td></tr>
+            <tr><td><strong>Durable WAL & Snapshot Store</strong></td><td>Upstash Serverless Redis</td><td>Persists term, votedFor, append-only log, and compacted snapshots across restarts.</td></tr>
           </tbody>
         </table>
-      </div>
-
-      <div id="sub-glossary" class="hidden panel">
-        <div class="panel-title">Distributed Consensus Glossary</div>
-        <table>
-          <thead><tr><th>Term</th><th>Definition in RaftLab</th></tr></thead>
-          <tbody>
-            <tr><td><strong>Quorum (Majority)</strong></td><td><code>Math.floor(N / 2) + 1</code> nodes (3 for 5 nodes, 2 for 3 nodes). Prevents split-brain commits.</td></tr>
-            <tr><td><strong>Write-Ahead Log (WAL)</strong></td><td>Durable append-only log + term/vote/snapshot keys persisted in Upstash Redis (or in-memory fallback).</td></tr>
-            <tr><td><strong>Network Partition (Isolate)</strong></td><td>Blocks RPCs for a node so a minority side cannot commit while a majority side can elect/commit.</td></tr>
-            <tr><td><strong>Idempotent Write</strong></td><td>Deduplicates retries carrying the same <code>requestId</code> so network retries do not double-apply mutations.</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div id="sub-architecture" class="hidden panel">
-        <div class="panel-title">Service Boundaries &amp; Deployment Trade-offs</div>
-        <ul style="line-height:1.7;color:var(--muted);font-size:13px;">
-          <li><strong style="color:var(--text);">Static Dashboard (Vercel):</strong> Zero server state; talks purely over HTTP and SSE to the Gateway URL.</li>
-          <li><strong style="color:var(--text);">Gateway (<code>:5000</code>):</strong> Aggregates <code>/status</code>, routes writes with leader redirect retry, returns <code>503</code> when leaderless, and streams SSE events.</li>
-          <li><strong style="color:var(--text);">Raft Nodes (<code>N1</code>-<code>N5</code>):</strong> Independent state machines with randomized election timeouts (<code>1500-3000ms</code>) and periodic heartbeats/replication.</li>
-          <li><strong style="color:var(--text);">Cloud Datastore (Upstash Redis):</strong> Externalizes durability across container restarts so revived nodes recover term, votes, log, and snapshots.</li>
-        </ul>
       </div>
     </section>
   </div>
 
   <script>
-    const defaultGw = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5000' : ${window.location.origin}/api;
-    const defaultGw = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5000' : ${window.location.origin}/api;
-    let gw = (localStorage.getItem('raft_gw') || defaultGw).replace(/\/+$/, '');').replace(/\/+$/, '');
-    document.getElementById('gw').value = gw;
+    const DEFAULT_GW = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+      ? 'http://localhost:5000'
+      : 'https://raft-gateway.onrender.com';
+    document.getElementById('gw').value = localStorage.getItem('raft_gw') || DEFAULT_GW;
 
-    let st = { term: 0, leaderId: null, clusterSize: 0, majority: 0, reachableCount: 0, nodes: [] };
-    let es = null;
-    let elections = 0;
-    let lastChg = 'Never';
-    let lastLid = null;
-    let runHistory = [];
+    let lastCluster = null;
+    let lastLeader = null;
+    let lastTerm = 0;
+    const snapshots = [];
 
-    const EXPERIMENTS = [
-      {
-        id: 'A',
-        title: 'Experiment A — Leader Election & Quorum Readiness',
-        presetLabel: 'Preset A: Election & Quorum',
-        objective: 'Observe how randomized election timeouts elect a single Leader once a majority of nodes is reachable.',
-        steps: [
-          'Click "Load Preset & Open Live Lab" on Experiment A.',
-          'Watch nodes transition from Follower -> Candidate -> Leader in the cluster grid and SSE stream.',
-          'Verify Quorum Size and Reachable Nodes in the top strip.'
-        ],
-        observe: [
-          'Exactly one Leader emerges for a given term once at least a majority responds.',
-          'Elections observed increments when timeouts expire without leader heartbeats.',
-          'Cluster becomes ready to accept POST /write requests.'
-        ],
-        explanation: 'Randomized election timeouts (1500-3000ms) reduce split votes so one candidate wins a majority and establishes authority via heartbeats.',
-        reflect: 'What happens if two candidates split votes in the same term? How does the next randomized timeout resolve it?',
-        action: async () => { await poll(); }
-      },
-      {
-        id: 'B',
-        title: 'Experiment B — Log Compaction & Snapshot Trade-offs',
-        presetLabel: 'Preset B: 22-Write Compaction',
-        objective: 'Quantify how committing 20+ entries triggers snapshot compaction and advances snapshotIndex.',
-        steps: [
-          'Load Preset B to send 22 writes through the Gateway.',
-          'Inspect nodes in Live Lab and WAL Explorer.',
-          'Compare snapshotIndex and active logLength before vs. after compaction.'
-        ],
-        observe: [
-          'Once 20 committed entries accumulate, snapshotIndex advances and older entries compact into snapshot KV.',
-          'Active log window shrinks while committed KV state remains intact.',
-          'Memory/WAL growth stays bounded over long write streams.'
-        ],
-        explanation: 'Compacting committed entries into a snapshot bounds log size, at the cost of extra snapshot serialization work at the compaction threshold.',
-        reflect: 'What if the compaction threshold is set very low (e.g., 2) vs. very high (e.g., 500) under heavy write load?',
-        action: async () => { await sendBurst(22); }
-      },
-      {
-        id: 'C',
-        title: 'Experiment C — Leader Failover & Fencing',
-        presetLabel: 'Preset C: Leader Kill Failover',
-        objective: 'Observe what happens when the active Leader dies and how a new Leader takes over in a higher term.',
-        steps: [
-          'Ensure a Leader is elected and commit a baseline write.',
-          'Load Preset C to kill the current Leader.',
-          'Watch term increment, a new Leader win election, and subsequent writes succeed.'
-        ],
-        observe: [
-          'Killed node enters Dead role; cluster briefly has no leader until election timeout fires.',
-          'A surviving node with an up-to-date log wins election in term + 1.',
-          'Subsequent writes commit under the new Leader.'
-        ],
-        explanation: 'Raft elects leaders only from candidates whose log is at least as up-to-date as a majority, preserving already-committed entries across failover.',
-        reflect: 'Why must a candidate have an up-to-date log to win an election instead of any alive node winning?',
-        action: async () => {
-          if (st.leaderId) {
-            await adm(st.leaderId, 'kill');
-          }
-        }
-      },
-      {
-        id: 'D',
-        title: 'Experiment D — Network Partition & Quorum Loss',
-        presetLabel: 'Preset D: Majority Kill / Quorum Loss',
-        objective: 'Verify that a cluster without majority quorum refuses to commit new writes.',
-        steps: [
-          'Load Preset D to kill 3 of 5 nodes (leaving only 2 alive < quorum of 3).',
-          'Attempt a client write from Live Lab.',
-          'Check response status and live event log.'
-        ],
-        observe: [
-          'Reachable count drops below majority quorum (e.g., 2/5 when 3 needed).',
-          'Write is rejected with 503 / uncommitted rather than risking divergent committed histories.',
-          'Live Event Log records the rejected write.'
-        ],
-        explanation: 'Requiring majority acknowledgment guarantees any two quorums overlap by at least one node, preventing split-brain commits.',
-        reflect: 'What would happen to linearizability if a minority of 2 out of 5 nodes were allowed to commit writes?',
-        action: async () => {
-          for (const id of ['N3', 'N4', 'N5']) {
-            await adm(id, 'kill');
-          }
-        }
-      },
-      {
-        id: 'E',
-        title: 'Experiment E — Recovery & Log Reconciliation',
-        presetLabel: 'Preset E: Revive & Heal Cluster',
-        objective: 'Measure how reviving dead nodes or healing partitions restores quorum and reconciles logs.',
-        steps: [
-          'Load Preset E to revive N3, N4, N5 and heal any isolated nodes.',
-          'Wait a few seconds for heartbeats and AppendEntries replication.',
-          'Send a new write and inspect node commit indices and log lengths in WAL Explorer.'
-        ],
-        observe: [
-          'Revived nodes reload persisted WAL/term/snapshot state and rejoin as Followers.',
-          'Leader catches up lagging followers via AppendEntries.',
-          'Full 5/5 reachability returns and new writes commit cleanly.'
-        ],
-        explanation: 'Persisting hard state and WAL entries allows restarted nodes to recover safely and let the leader reconcile any missing log entries.',
-        reflect: 'Why does a revived node start as a Follower rather than immediately claiming leadership?',
-        action: async () => {
-          for (const id of ['N3', 'N4', 'N5']) {
-            await adm(id, 'revive');
-          }
-          await healAll();
-        }
-      }
-    ];
+    function gwUrl() { return document.getElementById('gw').value.trim().replace(/\/+$/, ''); }
+    function setPresetGw(url) { document.getElementById('gw').value = url; connectGw(); }
+    function connectGw() { localStorage.setItem('raft_gw', gwUrl()); logEv('Switched Gateway endpoint to ' + gwUrl()); poll(); }
+
+    function logEv(msg) {
+      const box = document.getElementById('evs');
+      const div = document.createElement('div');
+      div.className = 'ev';
+      div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+      box.prepend(div);
+      if (box.children.length > 60) box.lastChild.remove();
+    }
 
     function switchView(name) {
-      for (const v of ['lab', 'explorer', 'history', 'compare', 'learn']) {
-        document.getElementById(`view-${v}`).classList.toggle('hidden', v !== name);
-      }
-      document.querySelectorAll('.tab-btn').forEach((b) => {
-        b.classList.toggle('active', b.dataset.view === name);
-      });
+      ['lab', 'explorer', 'history', 'arch'].forEach(v => document.getElementById('view-' + v).classList.toggle('hidden', v !== name));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
       if (name === 'explorer') renderExplorer();
       if (name === 'history') renderHistory();
-      if (name === 'compare') populateCompareSelects();
     }
 
-    function switchSubtab(sub) {
-      document.querySelectorAll('.subtab').forEach((b) => b.classList.toggle('active', b.dataset.sub === sub));
-      for (const s of ['experiments', 'pipeline', 'metrics', 'glossary', 'architecture']) {
-        document.getElementById(`sub-${s}`).classList.toggle('hidden', s !== sub);
-      }
-    }
-
-    function renderExperiments() {
-      const root = document.getElementById('sub-experiments');
-      root.innerHTML = EXPERIMENTS.map((exp) => `
-        <div class="exp-card">
-          <div class="exp-top">
-            <h3 class="exp-title">${exp.title}</h3>
-            <button class="primary" onclick="runPreset('${exp.id}')">Load preset &amp; open Live Lab</button>
-          </div>
-          <div style="font-size:13px;color:var(--muted);margin-bottom:8px;"><strong style="color:var(--text);">Objective:</strong> ${exp.objective}</div>
-          <div class="exp-grid">
-            <div class="exp-box">
-              <h4>Steps</h4>
-              <ol>${exp.steps.map((x) => `<li>${x}</li>`).join('')}</ol>
-            </div>
-            <div class="exp-box">
-              <h4>What to Observe</h4>
-              <ul>${exp.observe.map((x) => `<li>${x}</li>`).join('')}</ul>
-            </div>
-            <div class="exp-box">
-              <h4>Explanation</h4>
-              <p style="margin:0;line-height:1.55;">${exp.explanation}</p>
-            </div>
-          </div>
-          <div class="reflect"><strong>Reflect:</strong> ${exp.reflect}</div>
-        </div>
-      `).join('');
-    }
-
-    async function runPreset(id) {
-      const exp = EXPERIMENTS.find((e) => e.id === id);
-      if (!exp) return;
-      document.getElementById('active-preset-pill').textContent = exp.presetLabel;
-      document.getElementById('active-preset-pill').classList.add('live');
-      switchView('lab');
-      await exp.action();
-      setTimeout(() => {
-        poll();
-        recordRunSnapshot(exp.presetLabel);
-      }, 450);
-    }
-
-    function logEv(term, msg, ts = new Date().toISOString()) {
-      const d = document.createElement('div');
-      d.className = 'ev';
-      d.textContent = `[${new Date(ts).toLocaleTimeString()}] [T${term}] ${msg}`;
-      document.getElementById('evs').prepend(d);
-    }
-
-    function connectGw() {
-      gw = document.getElementById('gw').value.trim().replace(/\/+$/, '');
-      localStorage.setItem('raft_gw', gw);
-      if (es) es.close();
-      es = new EventSource(`${gw}/events`);
-      es.onopen = () => {
-        const p = document.getElementById('conn-pill');
-        p.textContent = 'Gateway SSE Connected';
-        p.className = 'pill ok';
-      };
-      es.onerror = () => {
-        const p = document.getElementById('conn-pill');
-        p.textContent = 'Gateway Disconnected';
-        p.className = 'pill';
-      };
-      es.onmessage = (e) => {
-        try {
-          const m = JSON.parse(e.data);
-          logEv(m.term ?? 0, m.message || '', m.timestamp);
-          if (m.type === 'election_started') elections += 1;
-          if (m.type === 'leader_elected' && m.nodeId) {
-            lastChg = `${m.nodeId} @ ${new Date(m.timestamp || Date.now()).toLocaleTimeString()}`;
-          }
-          poll();
-        } catch {}
-      };
-      poll();
-    }
-
-    async function poll() {
+    async function nodeAction(nodeId, action) {
       try {
-        const r = await fetch(`${gw}/cluster`);
-        if (!r.ok) return;
-        st = await r.json();
-        if (st.leaderId && st.leaderId !== lastLid) {
-          lastLid = st.leaderId;
-          lastChg = `${st.leaderId} @ ${new Date().toLocaleTimeString()}`;
-        }
-        render();
-      } catch {}
-    }
-
-    async function adm(id, act) {
-      await fetch(`${gw}/admin/${encodeURIComponent(id)}/${encodeURIComponent(act)}`, { method: 'POST' });
-      setTimeout(poll, 200);
+        const r = await fetch(gwUrl() + '/admin/' + nodeId + '/' + action, { method: 'POST' });
+        const d = await r.json();
+        logEv('Admin [' + action.toUpperCase() + '] on ' + nodeId + ' -> ' + (r.ok ? 'OK' : d.error));
+        poll();
+      } catch (e) { logEv('Action failed: ' + e.message); }
     }
 
     async function splitBrain() {
-      const alive = st.nodes.filter((n) => n.alive);
-      if (alive.length < 3) return;
-      for (const n of alive.slice(0, Math.floor((alive.length - 1) / 2))) await adm(n.id, 'isolate');
-      if (st.leaderId) await adm(st.leaderId, 'isolate');
-      setTimeout(poll, 250);
+      if (!lastCluster?.nodes?.length) return;
+      const half = Math.floor(lastCluster.nodes.length / 2);
+      for (let i = 0; i < half; i++) await nodeAction(lastCluster.nodes[i].id, 'isolate');
+      logEv('Split-Brain triggered: minority isolated from majority quorum.');
     }
 
     async function healAll() {
-      for (const n of st.nodes) if (n.isolated) await adm(n.id, 'heal');
-      setTimeout(poll, 250);
+      if (!lastCluster?.nodes?.length) return;
+      for (const n of lastCluster.nodes) {
+        if (!n.alive) await nodeAction(n.id, 'revive');
+        if (n.isolated) await nodeAction(n.id, 'heal');
+      }
+      logEv('Healed & revived all cluster nodes.');
     }
 
     async function resetAll() {
-      if (!confirm('Reset cluster and wipe persisted logs/terms/snapshots?')) return;
-      for (const n of st.nodes) await adm(n.id, 'reset');
-      elections = 0; lastChg = 'Never'; lastLid = null;
-      document.getElementById('active-preset-pill').textContent = 'No experiment preset active';
-      setTimeout(poll, 250);
+      if (!lastCluster?.nodes?.length) return;
+      for (const n of lastCluster.nodes) await nodeAction(n.id, 'reset');
+      logEv('Cluster state & Upstash WAL cleared.');
     }
 
-    async function singleWrite(key, val, suffix = '') {
-      const requestId = `ui-${Date.now()}-${Math.random().toString(36).slice(2, 6)}${suffix}`;
-      const r = await fetch(`${gw}/write`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, value: val, requestId }),
-      });
-      const d = await r.json().catch(() => ({}));
-      return { status: r.status, data: d };
-    }
-
-    async function sendWrite() {
-      const key = document.getElementById('k').value.trim();
-      const value = document.getElementById('v').value;
-      const out = document.getElementById('w-res');
+    async function sendWrite(customK, customV) {
+      const k = customK ?? document.getElementById('k').value.trim();
+      const v = customV ?? document.getElementById('v').value.trim();
+      const resEl = document.getElementById('w-res');
       try {
-        const { status, data: d } = await singleWrite(key, value);
-        if (status === 200 && d.committed) {
-          out.style.color = '#86efac';
-          out.textContent = `Committed: ${key}=${value} at #${d.index} (term ${d.term}, ${d.latencyMs ?? 0}ms)`;
-        } else if (status === 202) {
-          out.style.color = '#fde047';
-          out.textContent = `Uncommitted: ${d.reason || 'No majority'}`;
+        const r = await fetch(gwUrl() + '/write', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: k, value: v, requestId: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) })
+        });
+        const d = await r.json();
+        if (r.ok) {
+          resEl.style.color = '#86efac';
+          resEl.textContent = 'Committed #' + d.index + ' [Term ' + d.term + ']: ' + k + ' = ' + v + ' (' + (d.latencyMs || 0) + ' ms) -> Saved to Upstash Redis';
+          logEv('Committed #' + d.index + ' (' + k + '=' + v + ')');
         } else {
-          out.style.color = '#fca5a5';
-          out.textContent = `Rejected (${status}): ${d.error || 'No leader'}`;
+          resEl.style.color = '#fca5a5';
+          resEl.textContent = 'Rejected (' + r.status + '): ' + (d.error || d.reason || 'Quorum unavailable');
+          logEv('Write rejected: ' + (d.error || d.reason));
         }
         poll();
-      } catch (e) {
-        out.style.color = '#fca5a5';
-        out.textContent = e.message;
-      }
+      } catch (e) { resEl.style.color = '#fca5a5'; resEl.textContent = 'Gateway unreachable: ' + e.message; }
     }
 
     async function sendBurst(count) {
-      const key = document.getElementById('k').value.trim() || 'metric';
-      const baseVal = Number(document.getElementById('v').value) || 1;
-      const out = document.getElementById('w-res');
-      let okCount = 0;
-      let failCount = 0;
-      for (let i = 1; i <= count; i++) {
-        try {
-          const { status, data: d } = await singleWrite(key, String(baseVal + i), `-${i}`);
-          if (status === 200 && d.committed) okCount += 1;
-          else failCount += 1;
-        } catch {
-          failCount += 1;
-        }
-      }
-      out.style.color = failCount === 0 ? '#86efac' : '#fde047';
-      out.textContent = `Batch of ${count}: ${okCount} committed, ${failCount} non-committed/rejected.`;
-      setTimeout(poll, 200);
+      for (let i = 1; i <= count; i++) await sendWrite('item_' + i, 'val_' + Math.floor(Math.random() * 1000));
     }
 
     function recordRunSnapshot(label) {
-      const maxCommit = Math.max(0, ...(st.nodes || []).map((n) => Number(n.commitIndex || 0)));
-      const maxSnap = Math.max(0, ...(st.nodes || []).map((n) => Number(n.snapshotIndex || 0)));
-      runHistory.unshift({
-        id: `run-${runHistory.length + 1}`,
-        label,
-        time: new Date().toLocaleTimeString(),
-        term: st.term ?? 0,
-        leaderId: st.leaderId || 'None',
-        reachable: `${st.reachableCount ?? 0}/${st.clusterSize ?? 0}`,
-        maxCommit,
-        maxSnap
+      if (!lastCluster) return;
+      snapshots.unshift({
+        time: new Date().toLocaleTimeString(), label, term: lastCluster.term,
+        leader: lastCluster.leaderId || 'None',
+        reachable: lastCluster.reachableCount + '/' + (lastCluster.totalNodes || lastCluster.nodes.length)
       });
-      document.getElementById('m-runs').textContent = String(runHistory.length);
+      document.getElementById('m-runs').textContent = snapshots.length;
+      logEv('Saved run snapshot: ' + label);
+    }
+
+    function renderCluster(data) {
+      lastCluster = data;
+      const nodes = data.nodes || [];
+      const total = data.totalNodes || nodes.length;
+      const maxCommit = nodes.reduce((m, n) => Math.max(m, n.commitIndex || 0), 0);
+      const maxSnap = nodes.reduce((m, n) => Math.max(m, n.snapshotIndex || 0), 0);
+      const totalElections = nodes.reduce((m, n) => m + (n.metrics?.electionsStarted || 0), 0);
+      const lats = nodes.map(n => n.metrics?.avgCommitLatencyMs || 0).filter(x => x > 0);
+      const avgLat = lats.length ? Math.round(lats.reduce((a, b) => a + b, 0) / lats.length) : 0;
+
+      document.getElementById('s-term').textContent = '#' + data.term;
+      document.getElementById('s-leader').textContent = data.leaderId || 'None';
+      document.getElementById('s-quorum').textContent = data.majority + ' / ' + total;
+      document.getElementById('s-reach').textContent = data.reachableCount + ' / ' + total;
+      document.getElementById('s-commit').textContent = '#' + maxCommit;
+      document.getElementById('s-snap').textContent = '#' + maxSnap;
+      document.getElementById('quorum-pill').textContent = 'Quorum: ' + data.majority + ' of ' + total;
+      document.getElementById('m-el').textContent = totalElections;
+      document.getElementById('m-lat').textContent = avgLat + ' ms';
+
+      if (data.leaderId !== lastLeader || data.term !== lastTerm) {
+        logEv('Cluster state: Term #' + data.term + ' | Leader: ' + (data.leaderId || 'None'));
+        lastLeader = data.leaderId;
+        lastTerm = data.term;
+      }
+
+      const grid = document.getElementById('nodes');
+      grid.innerHTML = nodes.map(n => {
+        const role = !n.alive ? 'Dead' : (n.role || 'Follower');
+        const entries = (n.log || []).slice(-8).map(e =>
+          '<span class="log-pill ' + (e.committed ? 'c-ok' : 'c-no') + '">#' + e.index + ' ' + e.key + '=' + e.value + '</span>'
+        ).join('');
+        return '<div class="node-card role-' + role + '">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<strong>' + n.id + '</strong>' +
+            '<div><span class="badge b-' + role + '">' + role + '</span>' + (n.isolated ? ' <span class="badge b-Iso">Isolated</span>' : '') + '</div>' +
+          '</div>' +
+          '<div class="meta">' +
+            '<div>Term: <strong>#' + (n.term || 0) + '</strong></div>' +
+            '<div>Commit: <strong>#' + (n.commitIndex || 0) + '</strong></div>' +
+            '<div>Snapshot: <strong>#' + (n.snapshotIndex || 0) + '</strong></div>' +
+            '<div>Log Tail: <strong>' + (n.log?.length || 0) + '</strong></div>' +
+          '</div>' +
+          '<div class="row">' +
+            '<button class="danger" onclick="nodeAction(\'' + n.id + '\',\'kill\')">Kill</button>' +
+            '<button class="ok" onclick="nodeAction(\'' + n.id + '\',\'revive\')">Revive</button>' +
+            '<button class="warn" onclick="nodeAction(\'' + n.id + '\',\'isolate\')">Isolate</button>' +
+            '<button onclick="nodeAction(\'' + n.id + '\',\'heal\')">Heal</button>' +
+          '</div>' +
+          '<div class="strip">' + (entries || '<span style="font-size:11px;color:var(--muted);">No uncommitted/tail entries</span>') + '</div>' +
+        '</div>';
+      }).join('');
     }
 
     function renderExplorer() {
+      if (!lastCluster) return;
       const el = document.getElementById('explorer-content');
-      if (!st.nodes?.length) {
-        el.innerHTML = '<div style="color:var(--muted);">No cluster data available yet.</div>';
-        return;
-      }
-      el.innerHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>Node</th><th>Role</th><th>Term</th><th>Commit Index</th><th>Snapshot Index</th><th>Log Tail Len</th><th>Committed KV</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${st.nodes.map((n) => `
-              <tr>
-                <td><strong>${n.id}</strong></td>
-                <td><span class="badge b-${n.role}">${n.role}</span></td>
-                <td>${n.term ?? 0}</td>
-                <td>${n.commitIndex ?? 0}</td>
-                <td>${n.snapshotIndex ?? 0}</td>
-                <td>${n.logLength ?? 0}</td>
-                <td><code>${JSON.stringify(n.kv || {})}</code></td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
+      el.innerHTML = '<table><thead><tr><th>Node</th><th>Role</th><th>Term</th><th>Commit Index</th><th>Snapshot Index</th><th>Committed KV State</th></tr></thead><tbody>' +
+        lastCluster.nodes.map(n => '<tr><td><strong>' + n.id + '</strong></td><td>' + n.role + '</td><td>#' + (n.term || 0) + '</td><td>#' + (n.commitIndex || 0) + '</td><td>#' + (n.snapshotIndex || 0) + '</td><td><code>' + JSON.stringify(n.kv || {}) + '</code></td></tr>').join('') +
+        '</tbody></table>';
     }
 
     function renderHistory() {
       const el = document.getElementById('history-content');
-      if (!runHistory.length) {
-        el.innerHTML = '<div style="color:var(--muted);">No snapshots recorded yet. Click "Save Run Snapshot" in Live Lab or run an experiment preset.</div>';
-        return;
+      if (!snapshots.length) { el.innerHTML = '<p style="color:var(--muted);">No snapshots captured yet.</p>'; return; }
+      el.innerHTML = '<table><thead><tr><th>Time</th><th>Label</th><th>Term</th><th>Leader</th><th>Reachable</th></tr></thead><tbody>' +
+        snapshots.map(s => '<tr><td>' + s.time + '</td><td>' + s.label + '</td><td>#' + s.term + '</td><td>' + s.leader + '</td><td>' + s.reachable + '</td></tr>').join('') +
+        '</tbody></table>';
+    }
+
+    async function poll() {
+      const pill = document.getElementById('conn-pill');
+      try {
+        const r = await fetch(gwUrl() + '/cluster');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        pill.className = 'pill ok';
+        pill.textContent = 'Connected: ' + gwUrl();
+        renderCluster(data);
+        if (!document.getElementById('view-explorer').classList.contains('hidden')) renderExplorer();
+      } catch (e) {
+        pill.className = 'pill err';
+        pill.textContent = 'Disconnected (' + e.message + ')';
       }
-      el.innerHTML = `
-        <table>
-          <thead>
-            <tr><th>Run</th><th>Label</th><th>Time</th><th>Term</th><th>Leader</th><th>Reachable</th><th>Max Commit</th><th>Max Snapshot</th></tr>
-          </thead>
-          <tbody>
-            ${runHistory.map((r) => `
-              <tr>
-                <td><code>${r.id}</code></td>
-                <td><strong>${r.label}</strong></td>
-                <td>${r.time}</td>
-                <td>${r.term}</td>
-                <td>${r.leaderId}</td>
-                <td>${r.reachable}</td>
-                <td>${r.maxCommit}</td>
-                <td>${r.maxSnap}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
     }
 
-    function populateCompareSelects() {
-      const a = document.getElementById('cmp-a');
-      const b = document.getElementById('cmp-b');
-      if (!runHistory.length) {
-        a.innerHTML = '<option>No runs yet</option>';
-        b.innerHTML = '<option>No runs yet</option>';
-        document.getElementById('compare-content').innerHTML = '<div style="color:var(--muted);">Capture at least two run snapshots to compare side by side.</div>';
-        return;
-      }
-      const opts = runHistory.map((r, idx) => `<option value="${idx}">${r.id} — ${r.label} (${r.time})</option>`).join('');
-      a.innerHTML = opts;
-      b.innerHTML = opts;
-      if (runHistory.length > 1) b.selectedIndex = 1;
-      renderCompare();
-    }
-
-    function renderCompare() {
-      const el = document.getElementById('compare-content');
-      if (!runHistory.length) return;
-      const r1 = runHistory[Number(document.getElementById('cmp-a').value) || 0];
-      const r2 = runHistory[Number(document.getElementById('cmp-b').value) || 0];
-      if (!r1 || !r2) return;
-      el.innerHTML = `
-        <table>
-          <thead><tr><th>Metric</th><th>${r1.id} (${r1.label})</th><th>${r2.id} (${r2.label})</th></tr></thead>
-          <tbody>
-            <tr><td>Term</td><td>${r1.term}</td><td>${r2.term}</td></tr>
-            <tr><td>Leader</td><td>${r1.leaderId}</td><td>${r2.leaderId}</td></tr>
-            <tr><td>Reachable Nodes</td><td>${r1.reachable}</td><td>${r2.reachable}</td></tr>
-            <tr><td>Max Commit Index</td><td>${r1.maxCommit}</td><td>${r2.maxCommit}</td></tr>
-            <tr><td>Max Snapshot Index</td><td>${r1.maxSnap}</td><td>${r2.maxSnap}</td></tr>
-          </tbody>
-        </table>
-      `;
-    }
-
-    function render() {
-      const maxCommit = Math.max(0, ...(st.nodes || []).map((n) => Number(n.commitIndex || 0)));
-      const maxSnap = Math.max(0, ...(st.nodes || []).map((n) => Number(n.snapshotIndex || 0)));
-
-      document.getElementById('s-term').textContent = st.term ?? 0;
-      document.getElementById('s-leader').textContent = st.leaderId || 'None';
-      document.getElementById('s-quorum').textContent = st.majority ?? 0;
-      document.getElementById('s-reach').textContent = `${st.reachableCount ?? 0} / ${st.clusterSize ?? 0}`;
-      document.getElementById('s-commit').textContent = String(maxCommit);
-      document.getElementById('s-snap').textContent = String(maxSnap);
-      document.getElementById('quorum-pill').textContent = `Quorum: ${st.majority ?? 0} of ${st.clusterSize ?? 0}`;
-
-      const lats = (st.nodes || []).map((n) => n.metrics?.avgCommitLatencyMs).filter((x) => typeof x === 'number' && x > 0);
-      document.getElementById('m-el').textContent = String(elections);
-      document.getElementById('m-lat').textContent = `${lats.length ? Math.round(lats.reduce((a, b) => a + b, 0) / lats.length) : 0} ms`;
-      document.getElementById('m-chg').textContent = lastChg;
-
-      const g = document.getElementById('nodes');
-      g.innerHTML = '';
-      for (const n of st.nodes || []) {
-        const c = document.createElement('div');
-        c.className = `node-card role-${n.role}`;
-        const pills = (n.log || []).map((e) => {
-          const ok = e.committed || e.index <= (n.commitIndex || 0);
-          return `<span class="log-pill ${ok ? 'c-ok' : 'c-no'}">#${e.index} T${e.term} ${e.key}=${e.value}</span>`;
-        }).join('');
-
-        c.innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <strong>${n.id}</strong>
-            <div>
-              <span class="badge b-${n.role}">${n.role}</span>
-              ${n.isolated ? '<span class="badge b-Iso">Isolated</span>' : ''}
-            </div>
-          </div>
-          <div class="meta">
-            <div>Term: <strong>${n.term ?? 0}</strong></div>
-            <div>Voted: <strong>${n.votedFor || '-'}</strong></div>
-            <div>Commit: <strong>${n.commitIndex ?? 0}</strong></div>
-            <div>Snapshot: <strong>${n.snapshotIndex ?? 0}</strong></div>
-            <div>State: <strong>${!n.alive ? 'Dead' : n.isolated ? 'Isolated' : 'Alive'}</strong></div>
-            <div>Log Len: <strong>${n.logLength ?? 0}</strong></div>
-          </div>
-          <div class="row">
-            <button class="danger" onclick="adm('${n.id}','kill')">Kill</button>
-            <button class="ok" onclick="adm('${n.id}','revive')">Revive</button>
-            <button class="warn" onclick="adm('${n.id}','isolate')">Isolate</button>
-            <button onclick="adm('${n.id}','heal')">Heal</button>
-          </div>
-          <div class="strip">${pills || '<span style="font-size:11px;color:var(--muted);">No entries in active log window</span>'}</div>
-        `;
-        g.appendChild(c);
-      }
-
-      if (!document.getElementById('view-explorer').classList.contains('hidden')) renderExplorer();
-    }
-
-    renderExperiments();
-    connectGw();
-    setInterval(poll, 1500);
+    setInterval(poll, 1200);
+    poll();
   </script>
 </body>
 </html>
-
-
-
-
-
